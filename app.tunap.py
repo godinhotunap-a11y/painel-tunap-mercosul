@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Configuração da página
 st.set_page_config(
-    page_title="TUNAP | Painel Executivo Mercosul",
+    page_title="TUNAP | Campanha Mercosul",
     page_icon="🚗",
     layout="wide"
 )
@@ -258,7 +258,7 @@ def load_data_from_db():
 # -----------------------------------------------------------------------------
 # Barra Lateral (Sidebar)
 # -----------------------------------------------------------------------------
-st.sidebar.title("⚙️ Painel de Controle")
+
 st.sidebar.markdown("---")
 
 # 1. PRIMEIRO: Seleção de Concessionária e Período (Setembro a Dezembro)
@@ -336,7 +336,7 @@ else:
 # -----------------------------------------------------------------------------
 # Corpo Principal
 # -----------------------------------------------------------------------------
-st.title("🚗 TUNAP | Painel Executivo Mercosul")
+st.title("🚗 TUNAP | Campanha Mercosul")
 
 df_vendas, df_pass = load_data_from_db()
 
@@ -350,7 +350,7 @@ else:
 
     # --- ABA 1: CONSULTORES ---
     with tab1:
-        st.subheader("Matriz de Vendas por Consultor (SKUs)")
+        st.subheader("Vendas por Consultor")
         
         all_consultants = sorted(list(set(p_filtered['consultor'].tolist() + v_filtered['consultor'].tolist())))
         filtered_consultants = []
@@ -411,17 +411,16 @@ else:
             df_matrix = pd.DataFrame(matrix_data)
             
             # Tabela fixa (sem ordenação)
-            st.markdown("### Matriz Consolidada da Equipe")
             st.markdown(df_matrix.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
 
             # --- SEÇÃO DE ATALHOS / POP-UP INDIVIDUAL POR CONSULTOR ---
             st.markdown("---")
-            st.subheader("📋 Atalhos Rápidos e Resumos Individuais (WhatsApp)")
+            st.subheader("📋 Análise Consultores")
             st.write("Abra o painel abaixo de cada consultor para copiar o resumo de desempenho e oportunidades:")
 
             for c in filtered_consultants:
                 short_n = consultant_display_map[c]
-                with st.expander(f"👤 Consultor: {short_n} (Resumo & Oportunidades WA)"):
+                with st.expander(f"👤 Consultor: {short_n} (Resumo & Oportunidades)"):
                     c_vendas = v_filtered[v_filtered['consultor'] == c]
                     c_pass = p_filtered[p_filtered['consultor'] == c]
                     
