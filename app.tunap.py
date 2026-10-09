@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import sqlite3
+sqlite3
 from datetime import datetime
 
 # Configuração da página (otimizada para mobile/desktop)
@@ -17,11 +17,9 @@ st.set_page_config(
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Ajuste geral para toque e legibilidade em celulares */
     html, body, [class*="css"] {
         font-size: 16px;
     }
-    /* Estilização das tabelas HTML para rolagem fluida em telas pequenas */
     .table-responsive {
         width: 100%;
         overflow-x: auto;
@@ -44,7 +42,6 @@ st.markdown("""
         background-color: #f8f9fa;
         font-weight: bold;
     }
-    /* Cartões de KPI customizados */
     .kpi-card {
         background-color: #f8f9fa;
         border: 1px solid #e9ecef;
@@ -398,7 +395,7 @@ else:
 # -----------------------------------------------------------------------------
 # Corpo Principal (Otimizado Mobile)
 # -----------------------------------------------------------------------------
-st.title("🚗 TUNAP | Mercosul")
+st.title("🚗 TUNAP | Campanha Mercosul")
 
 df_vendas, df_pass = load_data_from_db()
 
@@ -408,7 +405,7 @@ else:
     v_filtered = df_vendas[(df_vendas['empresa'] == loja_sel) & (df_vendas['data_venda'].str[3:5] == num_mes)]
     p_filtered = df_pass[(df_pass['empresa'] == loja_sel) & (df_pass['data_passagem'].str[3:5] == num_mes)]
 
-    tab1, tab2, tab3 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerência"])
+    tab1, tab2, tab3 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerencial"])
 
     # --- ABA 1: CONSULTORES ---
     with tab1:
@@ -472,58 +469,61 @@ else:
             matrix_data.extend([tot_row, mix_row, pass_row, conv_row, status_mix, status_conv])
             df_matrix = pd.DataFrame(matrix_data)
             
-            # Tabela com container responsivo para celular (rolagem horizontal suave)
             st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
             st.markdown(df_matrix.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
             st.markdown("---")
-            st.subheader("📋 Resumo & Oportunidades por Consultor")
-            st.write("Toque para abrir o resumo individual e copiar para o WhatsApp:")
+            st.subheader("📋 Análise e Oportunidades por Consultor")
+            st.write("Abra o painel abaixo de cada consultor para conferir a análise conversacional e copiar para o WhatsApp:")
 
             for c in filtered_consultants:
                 short_n = consultant_display_map[c]
-                with st.expander(f"👤 {short_n}"):
+                with st.expander(f"👤 Consultor: {short_n} (Resumo Inteligente)"):
                     c_vendas = v_filtered[v_filtered['consultor'] == c]
                     c_pass = p_filtered[p_filtered['consultor'] == c]
                     
                     tot_latas_c = int(c_vendas['qtde'].sum())
                     tot_os_c = int(c_pass['os_numero'].nunique())
                     conv_c = round(tot_latas_c / tot_os_c, 2) if tot_os_c > 0 else 0.0
+                    mix_c = len(set(c_vendas['sku'].dropna().unique()))
                     
                     produtos_nao_vendidos_lista = []
                     for prod_ref, desc in PRODUCT_CATALOG:
                         sku_alvo = PRODUCT_MAP.get(prod_ref, {}).get('sku')
                         qtd_item = c_vendas[(c_vendas['prod_ref'] == prod_ref) | (c_vendas['sku'] == sku_alvo)]['qtde'].sum()
                         if qtd_item == 0:
-                            produtos_nao_vendidos_lista.append(f"• ⚠️ {desc} (SKU {sku_alvo})")
+                            produtos_nao_vendidos_lista.append(f"• {desc} (SKU {sku_alvo})")
 
-                    # Cards KPI centralizados para celular
-                    st.markdown(f"""
-                        <div style="display: flex; gap: 10px; justify-content: space-between; margin-bottom: 15px;">
-                            <div class="kpi-card" style="flex: 1;"><div class="kpi-title">Latas</div><div class="kpi-value">{tot_latas_c}</div></div>
-                            <div class="kpi-card" style="flex: 1;"><div class="kpi-title">Passagens</div><div class="kpi-value">{tot_os_c}</div></div>
-                            <div class="kpi-card" style="flex: 1;"><div class="kpi-title">Conv.</div><div class="kpi-value">{conv_c:.2f}</div></div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    col_c1, col_c2, col_c3 = st.columns(3)
+                    col_c1.metric("Total Latas", tot_latas_c)
+                    col_c2.metric("Passagens CSP", tot_os_c)
+                    col_c3.metric("Conversão", f"{conv_c:.2f}")
 
-                    texto_wpp_consultor = f"👤 *RELATÓRIO INDIVIDUAL - TUNAP*\n" \
-                                          f"📌 Consultor: *{short_n}*\n" \
-                                          f"📅 Período: {mes_sel}/2026\n\n" \
-                                          f"📊 *Resultados Atuais:*\n" \
-                                          f"• Total de Latas: {tot_latas_c}\n" \
-                                          f"• Atendimentos CSP: {tot_os_c}\n" \
-                                          f"• Taxa de Conversão: {conv_c:.2f}\n\n" \
-                                          f"🚀 *Oportunidades (Produtos não vendidos):*\n" + \
-                                          ("\n".join(produtos_nao_vendidos_lista) if produtos_nao_vendidos_lista else "• Nenhum! Fechou o mix completo! 🎉") + \
-                                          f"\n\n_Foco no mix para alavancar os resultados!_"
+                    # Inteligência Conversacional de IA para o WhatsApp
+                    saudacao = f"Fala, *{short_n}*! Tudo joia? 🚀 Passando para dar aquela conferida rápida no nosso ritmo da campanha TUNAP em *{mes_sel}* por *{format_loja_name(loja_sel)}*."
+                    
+                    if conv_c >= 2.40:
+                        desempenho_msg = f"📈 Seu ritmo está excelente! Você já soma {tot_latas_c} latas em {tot_os_c} passagens CSP, alcançando uma conversão fantástica de *{conv_c:.2f}* (acima da nossa meta de 2.40). Parabéns pelo foco e dedicação!"
+                    else:
+                        falta_conv = round(2.40 - conv_c, 2)
+                        desempenho_msg = f"📊 Até o momento, registramos {tot_latas_c} latas em {tot_os_c} passagens CSP, gerando uma conversão de *{conv_c:.2f}*. Estamos muito perto da meta de 2.40 (faltam apenas {falta_conv} pontos na média), e tenho certeza que com alguns ajustes nos próximos atendimentos vamos buscar esse objetivo!"
 
-                    st.markdown("**Mensagem para o WhatsApp:**")
+                    if produtos_nao_vendidos_lista:
+                        oportunidades_msg = f"💡 *Oportunidades de Ouro (Produtos que ainda não saíram nas suas OS):*\n" + "\n".join([f"• ⚠️ {item}" for item in produtos_nao_vendidos_lista[:6]]) + f"\n*(E mais alguns itens do catálogo)*\n\n🎯 Focar nesses itens nos balcões vai turbinar o seu mix e maximizar seus ganhos!"
+                    else:
+                        oportunidades_msg = f"🎉 Espetacular! Você já pontuou com absolutamente todos os produtos do mix! Trabalho impecável!"
+
+                    fechamento = f"Vamos pra cima nas próximas passagens! Qualquer dúvida ou apoio que precisar, estou à disposição. Bom trabalho e excelentes vendas! 👊🔥"
+
+                    texto_wpp_consultor = f"{saudacao}\n\n{desempenho_msg}\n\n{oportunidades_msg}\n\n{fechamento}"
+
+                    st.markdown("**Mensagem Inteligente pronta para o WhatsApp:**")
                     st.code(texto_wpp_consultor, language="markdown")
 
     # --- ABA 2: EQUIPE TÉCNICA ---
     with tab2:
-        st.subheader("Equipe Técnica")
+        st.subheader("Acompanhamento da Equipe Técnica")
         metas_loja = METAS_STAFF.get(loja_sel, {})
         
         tot_v = int(v_filtered['qtde'].sum())
@@ -573,48 +573,63 @@ else:
         premio = "🏆 ELEGÍVEL À PREMIAÇÃO" if (todos_skus and taxa_conv >= meta_conv) else "❌ NÃO ELEGÍVEL"
         st.markdown(f"### Resultado Staff: **{premio}**")
 
-    # --- ABA 3: PAINEL GERENTES ---
+    # --- ABA 3: PAINEL GERENCIAL (Global - Todas as Lojas do Período) ---
     with tab3:
-        st.subheader("Visão Executiva")
-        
-        m1, m2, m3 = 2.40, 2.60, 2.80
-        s1 = "🟢 Atingida" if taxa_conv >= m1 else f"🔴 Falta {round(m1 - taxa_conv, 2)}"
-        s2 = "🟢 Atingida" if taxa_conv >= m2 else f"🔴 Falta {round(m2 - taxa_conv, 2)}"
-        s3 = "🟢 Atingida" if taxa_conv >= m3 else f"🔴 Falta {round(m3 - taxa_conv, 2)}"
+        st.subheader(f"Visão Gerencial Consolidada - {mes_sel}/2026")
+        st.write("Panorama geral consolidado de **todas as concessionárias** cadastradas no período selecionado:")
 
-        if taxa_conv >= m3:
-            exec_status = "🏆 NÍVEL MÁXIMO (Meta 3)"
-        elif taxa_conv >= m2:
-            exec_status = "⭐ INTERMEDIÁRIO (Meta 2)"
-        elif taxa_conv >= m1:
-            exec_status = "✔️ NÍVEL BASE (Meta 1)"
+        # Filtra vendas e passagens apenas pelo mês selecionado (sem filtrar concessionária)
+        v_gerencial_global = df_vendas[df_vendas['data_venda'].str[3:5] == num_mes]
+        p_gerencial_global = df_pass[df_pass['data_passagem'].str[3:5] == num_mes]
+
+        if v_gerencial_global.empty:
+            st.info("Nenhum dado registrado para o período gerencial selecionado.")
         else:
-            exec_status = "❌ ABAIXO DA META 1"
+            lojas_disponiveis = sorted(v_gerencial_global['empresa'].unique().tolist())
+            gerencial_rows = []
 
-        gerente_data = [{
-            'Concessionária': str(format_loja_name(loja_sel)),
-            'Total Vendas (Latas)': str(tot_v),
-            'Total Passagens (CSP)': str(tot_p),
-            'Taxa Conversão': f"{taxa_conv:.2f}",
-            'Meta 1 (2.4)': str(s1),
-            'Meta 2 (2.6)': str(s2),
-            'Meta 3 (2.8)': str(s3),
-            'Status Executivo': str(exec_status)
-        }]
+            tot_geral_v = 0
+            tot_geral_p = 0
 
-        df_gerente = pd.DataFrame(gerente_data)
-        st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
-        st.markdown(df_gerente.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+            for loja in lojas_disponiveis:
+                v_loja = v_gerencial_global[v_gerencial_global['empresa'] == loja]
+                p_loja = p_gerencial_global[p_gerencial_global['empresa'] == loja]
 
-        st.markdown("---")
-        if st.button("📝 Gerar Resumo Rápido para o WhatsApp", use_container_width=True):
-            texto_wpp = f"📊 *RESUMO EXECUTIVO TUNAP - {format_loja_name(loja_sel)}*\n" \
-                        f"📅 Período: {mes_sel}/2026\n\n" \
-                        f"• Vendas Totais: {tot_v} latas\n" \
-                        f"• Passagens CSP: {tot_p} OS\n" \
-                        f"• Taxa de Conversão: {taxa_conv:.2f} (Meta: 2.40)\n" \
-                        f"• Status: {exec_status}\n\n" \
-                        f"_Painel Gerencial Mercosul_"
-            st.code(texto_wpp, language="markdown")
-            st.info("Basta copiar o texto acima e enviar para a equipe junto com o print da tela!")
+                v_tot = int(v_loja['qtde'].sum())
+                p_tot = int(p_loja['os_numero'].nunique())
+                conv_loja = round(v_tot / p_tot, 2) if p_tot > 0 else 0.0
+
+                tot_geral_v += v_tot
+                tot_geral_p += p_tot
+
+                if conv_loja >= 2.80:
+                    status_loja = "🏆 Nível Máximo (Meta 3)"
+                elif conv_loja >= 2.60:
+                    status_loja = "⭐ Intermediário (Meta 2)"
+                elif conv_loja >= 2.40:
+                    status_loja = "✔️ Nível Base (Meta 1)"
+                else:
+                    status_loja = "❌ Abaixo da Meta"
+
+                gerencial_rows.append({
+                    'Concessionária': str(format_loja_name(loja)),
+                    'Total Vendas (Latas)': str(v_tot),
+                    'Passagens (CSP)': str(p_tot),
+                    'Conversão': f"{conv_loja:.2f}",
+                    'Status Executivo': str(status_loja)
+                })
+
+            # Linha de Total Geral da Rede
+            conv_geral_rede = round(tot_geral_v / tot_geral_p, 2) if tot_geral_p > 0 else 0.0
+            gerencial_rows.append({
+                'Concessionária': 'TOTAL / MÉDIA REDE',
+                'Total Vendas (Latas)': str(tot_geral_v),
+                'Passagens (CSP)': str(tot_geral_p),
+                'Conversão': f"{conv_geral_rede:.2f}",
+                'Status Executivo': '🌐 Consolidado Mercosul'
+            })
+
+            df_gerencial_global = pd.DataFrame(gerencial_rows)
+            st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
+            st.markdown(df_gerencial_global.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
