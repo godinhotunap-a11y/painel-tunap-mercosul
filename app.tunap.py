@@ -4,12 +4,70 @@ import numpy as np
 import sqlite3
 from datetime import datetime
 
-# Configuração da página
+# Configuração da página (otimizada para mobile/desktop)
 st.set_page_config(
     page_title="TUNAP | Campanha Mercosul",
     page_icon="🚗",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="auto"
 )
+
+# -----------------------------------------------------------------------------
+# Estilização CSS Customizada para Mobile (Responsividade e Tabelas)
+# -----------------------------------------------------------------------------
+st.markdown("""
+    <style>
+    /* Ajuste geral para toque e legibilidade em celulares */
+    html, body, [class*="css"] {
+        font-size: 16px;
+    }
+    /* Estilização das tabelas HTML para rolagem fluida em telas pequenas */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 1rem;
+    }
+    table.table {
+        width: 100%;
+        max-width: 100%;
+        background-color: transparent;
+        white-space: nowrap;
+        font-size: 14px;
+    }
+    table.table th, table.table td {
+        padding: 8px 12px;
+        text-align: center;
+        border-top: 1px solid #dee2e6;
+    }
+    table.table th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    /* Cartões de KPI customizados */
+    .kpi-card {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .kpi-title {
+        font-size: 13px;
+        color: #6c757d;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .kpi-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #212529;
+        margin-top: 5px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # Configuração do Banco de Dados SQLite (base.db)
@@ -48,7 +106,6 @@ def init_db():
         )
     ''')
     
-    # Tabela para controle de metadados / histórico de uploads
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS uploads_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +131,6 @@ def clear_database():
 def get_db_status():
     conn = sqlite3.connect(DB_NAME)
     
-    # Maior e menor data de vendas
     df_v = pd.read_sql("SELECT data_venda FROM vendas", conn)
     min_v, max_v = "N/A", "N/A"
     if not df_v.empty:
@@ -83,7 +139,6 @@ def get_db_status():
             min_v = valid_v.min().strftime('%d/%m/%Y')
             max_v = valid_v.max().strftime('%d/%m/%Y')
 
-    # Maior e menor data de passagens
     df_p = pd.read_sql("SELECT data_passagem FROM passagens", conn)
     min_p, max_p = "N/A", "N/A"
     if not df_p.empty:
@@ -92,7 +147,6 @@ def get_db_status():
             min_p = valid_p.min().strftime('%d/%m/%Y')
             max_p = valid_p.max().strftime('%d/%m/%Y')
 
-    # Último upload registrado
     df_log = pd.read_sql("SELECT data_upload FROM uploads_log ORDER BY id DESC LIMIT 1", conn)
     ultimo_upload = "Nenhum upload"
     if not df_log.empty:
@@ -241,7 +295,6 @@ def save_to_database(file_pass, file_vend):
             except:
                 pass
 
-    # Registra o histórico do upload atual com data/hora
     agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     conn.execute("INSERT INTO uploads_log (arquivo_tipo, data_upload) VALUES (?, ?)", ("Vendas & Passagens", agora))
 
@@ -258,15 +311,18 @@ def load_data_from_db():
 # -----------------------------------------------------------------------------
 # Barra Lateral (Sidebar)
 # -----------------------------------------------------------------------------
-
 st.sidebar.markdown("---")
 
-# 1. PRIMEIRO: Seleção de Concessionária e Período (Setembro a Dezembro)
 df_vendas_init, df_pass_init = load_data_from_db()
 
 if not df_vendas_init.empty:
     lojas = sorted(df_vendas_init['empresa'].unique().tolist())
-    loja_sel = st.sidebar.selectbox("Concessionária:", lojas)
+    
+    default_loja_index = 0
+    if "loja_sel" in st.session_state and st.session_state.loja_sel in lojas:
+        default_loja_index = lojas.index(st.session_state.loja_sel)
+
+    loja_sel = st.sidebar.selectbox("Concessionária:", lojas, index=default_loja_index, key="loja_sel")
     
     meses_dict = {
         "Setembro": "09", 
@@ -274,69 +330,75 @@ if not df_vendas_init.empty:
         "Novembro": "11", 
         "Dezembro": "12"
     }
-    mes_sel = st.sidebar.selectbox("Mês de Apuração:", list(meses_dict.keys()))
+    
+    mes_atual_num = datetime.now().strftime('%m')
+    default_mes_key = "Outubro"
+    for nome_mes, num_str in meses_dict.items():
+        if num_str == mes_atual_num:
+            default_mes_key = nome_mes
+            break
+
+    meses_keys = list(meses_dict.keys())
+    default_mes_index = meses_keys.index(default_mes_key) if default_mes_key in meses_keys else 1
+
+    mes_sel = st.sidebar.selectbox("Mês de Apuração:", meses_keys, index=default_mes_index)
     num_mes = meses_dict[mes_sel]
 else:
     loja_sel = None
-    num_mes = "10"
+    num_mes = datetime.now().strftime('%m')
     mes_sel = "Outubro"
     st.sidebar.info("Banco vazio. Faça o upload abaixo.")
 
 st.sidebar.markdown("---")
 
-# 2. SEGUNDO: Operação de Atualização (Upload)
 st.sidebar.subheader("📥 Atualizar Histórico (Upload)")
 file_pass = st.sidebar.file_uploader("Relatório de Passagens (OS)", type=["xlsx", "xls"])
 file_vend = st.sidebar.file_uploader("Relatório de Vendas (NF)", type=["xlsx", "xls"])
 
 if file_pass and file_vend:
-    if st.sidebar.button("💾 Salvar Novos Dados no Banco"):
+    if st.sidebar.button("💾 Salvar Novos Dados no Banco", use_container_width=True):
         with st.spinner("Processando e salvando no base.db..."):
             save_to_database(file_pass, file_vend)
             st.sidebar.success("🟢 Dados acumulados com sucesso no banco!")
             st.rerun()
 
-# -----------------------------------------------------------------------------
-# PAINEL DE CONTROLE DE UPLOADS E REGISTROS DO BANCO
-# -----------------------------------------------------------------------------
 st.sidebar.markdown("---")
-st.sidebar.subheader("📊 Status dos Dados Carregados")
+st.sidebar.subheader("📊 Status dos Dados")
 
 min_v, max_v, min_p, max_p, ultimo_upload = get_db_status()
 
-st.sidebar.markdown(f"🕒 **Último Upload:**\n`{ultimo_upload}`")
-st.sidebar.markdown(f"🛒 **Vendas (Notas Fiscais):**\nDe `{min_v}` até `{max_v}`")
-st.sidebar.markdown(f"🛠️ **Passagens (OS CSP):**\nDe `{min_p}` até `{max_p}`")
+st.sidebar.markdown(f"🕒 **Último Upload:** `{ultimo_upload}`")
+st.sidebar.markdown(f"🛒 **Vendas:** `{min_v}` até `{max_v}`")
+st.sidebar.markdown(f"🛠️ **Passagens:** `{min_p}` até `{max_p}`")
 
 st.sidebar.markdown("---")
 
-# 3. TERCEIRO: Botão de Limpeza do Banco de Dados com confirmação
-st.sidebar.subheader("🗑️ Gerenciamento de Dados")
+st.sidebar.subheader("🗑️ Gerenciamento")
 if "confirm_clear" not in st.session_state:
     st.session_state.confirm_clear = False
 
 if not st.session_state.confirm_clear:
-    if st.sidebar.button("🧹 Limpar Banco de Dados"):
+    if st.sidebar.button("🧹 Limpar Banco de Dados", use_container_width=True):
         st.session_state.confirm_clear = True
         st.rerun()
 else:
-    st.sidebar.warning("Tem certeza? Todos os dados salvos serão apagados!")
+    st.sidebar.warning("Tem certeza? Todos os dados serão apagados!")
     col_bt1, col_bt2 = st.sidebar.columns(2)
     with col_bt1:
-        if st.button("Sim, apagar"):
+        if st.button("Sim, apagar", use_container_width=True):
             clear_database()
             st.session_state.confirm_clear = False
-            st.sidebar.success("Banco de dados limpo com sucesso!")
+            st.sidebar.success("Banco limpo!")
             st.rerun()
     with col_bt2:
-        if st.button("Cancelar"):
+        if st.button("Cancelar", use_container_width=True):
             st.session_state.confirm_clear = False
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# Corpo Principal
+# Corpo Principal (Otimizado Mobile)
 # -----------------------------------------------------------------------------
-st.title("🚗 TUNAP | Campanha Mercosul")
+st.title("🚗 TUNAP | Mercosul")
 
 df_vendas, df_pass = load_data_from_db()
 
@@ -346,7 +408,7 @@ else:
     v_filtered = df_vendas[(df_vendas['empresa'] == loja_sel) & (df_vendas['data_venda'].str[3:5] == num_mes)]
     p_filtered = df_pass[(df_pass['empresa'] == loja_sel) & (df_pass['data_passagem'].str[3:5] == num_mes)]
 
-    tab1, tab2, tab3 = st.tabs(["👤 Consultores", "🛠️ Equipe Técnica", "📊 Painel Gerentes"])
+    tab1, tab2, tab3 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerência"])
 
     # --- ABA 1: CONSULTORES ---
     with tab1:
@@ -365,7 +427,7 @@ else:
                 consultant_display_map[c] = short_name
 
         if not filtered_consultants:
-            st.info("Nenhum consultor atingiu o volume mínimo de 10 latas no período selecionado.")
+            st.info("Nenhum consultor atingiu o volume mínimo de 10 latas no período.")
         else:
             matrix_data = []
             totais_colunas = {c: 0 for c in filtered_consultants}
@@ -410,17 +472,18 @@ else:
             matrix_data.extend([tot_row, mix_row, pass_row, conv_row, status_mix, status_conv])
             df_matrix = pd.DataFrame(matrix_data)
             
-            # Tabela fixa (sem ordenação)
+            # Tabela com container responsivo para celular (rolagem horizontal suave)
+            st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
             st.markdown(df_matrix.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            # --- SEÇÃO DE ATALHOS / POP-UP INDIVIDUAL POR CONSULTOR ---
             st.markdown("---")
-            st.subheader("📋 Análise Consultores")
-            st.write("Abra o painel abaixo de cada consultor para copiar o resumo de desempenho e oportunidades:")
+            st.subheader("📋 Resumo & Oportunidades por Consultor")
+            st.write("Toque para abrir o resumo individual e copiar para o WhatsApp:")
 
             for c in filtered_consultants:
                 short_n = consultant_display_map[c]
-                with st.expander(f"👤 Consultor: {short_n} (Resumo & Oportunidades)"):
+                with st.expander(f"👤 {short_n}"):
                     c_vendas = v_filtered[v_filtered['consultor'] == c]
                     c_pass = p_filtered[p_filtered['consultor'] == c]
                     
@@ -435,10 +498,14 @@ else:
                         if qtd_item == 0:
                             produtos_nao_vendidos_lista.append(f"• ⚠️ {desc} (SKU {sku_alvo})")
 
-                    col_c1, col_c2, col_c3 = st.columns(3)
-                    col_c1.metric("Total Latas", tot_latas_c)
-                    col_c2.metric("Passagens CSP", tot_os_c)
-                    col_c3.metric("Conversão", f"{conv_c:.2f}")
+                    # Cards KPI centralizados para celular
+                    st.markdown(f"""
+                        <div style="display: flex; gap: 10px; justify-content: space-between; margin-bottom: 15px;">
+                            <div class="kpi-card" style="flex: 1;"><div class="kpi-title">Latas</div><div class="kpi-value">{tot_latas_c}</div></div>
+                            <div class="kpi-card" style="flex: 1;"><div class="kpi-title">Passagens</div><div class="kpi-value">{tot_os_c}</div></div>
+                            <div class="kpi-card" style="flex: 1;"><div class="kpi-title">Conv.</div><div class="kpi-value">{conv_c:.2f}</div></div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
                     texto_wpp_consultor = f"👤 *RELATÓRIO INDIVIDUAL - TUNAP*\n" \
                                           f"📌 Consultor: *{short_n}*\n" \
@@ -451,12 +518,12 @@ else:
                                           ("\n".join(produtos_nao_vendidos_lista) if produtos_nao_vendidos_lista else "• Nenhum! Fechou o mix completo! 🎉") + \
                                           f"\n\n_Foco no mix para alavancar os resultados!_"
 
-                    st.markdown("**Mensagem pronta para o WhatsApp:**")
+                    st.markdown("**Mensagem para o WhatsApp:**")
                     st.code(texto_wpp_consultor, language="markdown")
 
     # --- ABA 2: EQUIPE TÉCNICA ---
     with tab2:
-        st.subheader("Acompanhamento da Equipe Técnica")
+        st.subheader("Equipe Técnica")
         metas_loja = METAS_STAFF.get(loja_sel, {})
         
         tot_v = int(v_filtered['qtde'].sum())
@@ -499,14 +566,16 @@ else:
         })
 
         df_staff = pd.DataFrame(staff_rows)
+        st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
         st.markdown(df_staff.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         premio = "🏆 ELEGÍVEL À PREMIAÇÃO" if (todos_skus and taxa_conv >= meta_conv) else "❌ NÃO ELEGÍVEL"
-        st.markdown(f"### Resultado Final Staff: **{premio}**")
+        st.markdown(f"### Resultado Staff: **{premio}**")
 
     # --- ABA 3: PAINEL GERENTES ---
     with tab3:
-        st.subheader("Visão Executiva Gerencial")
+        st.subheader("Visão Executiva")
         
         m1, m2, m3 = 2.40, 2.60, 2.80
         s1 = "🟢 Atingida" if taxa_conv >= m1 else f"🔴 Falta {round(m1 - taxa_conv, 2)}"
@@ -534,10 +603,12 @@ else:
         }]
 
         df_gerente = pd.DataFrame(gerente_data)
+        st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
         st.markdown(df_gerente.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("---")
-        if st.button("📝 Gerar Resumo Rápido para o WhatsApp"):
+        if st.button("📝 Gerar Resumo Rápido para o WhatsApp", use_container_width=True):
             texto_wpp = f"📊 *RESUMO EXECUTIVO TUNAP - {format_loja_name(loja_sel)}*\n" \
                         f"📅 Período: {mes_sel}/2026\n\n" \
                         f"• Vendas Totais: {tot_v} latas\n" \
