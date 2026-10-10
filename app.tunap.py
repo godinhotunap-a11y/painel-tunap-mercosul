@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="TUNAP | Campanha Mercosul",
     page_icon="🚗",
     layout="wide",
-    initial_sidebar_state="auto"
+    initial_sidebar_state="expanded"
 )
 
 # -----------------------------------------------------------------------------
@@ -24,55 +24,69 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # -----------------------------------------------------------------------------
-# Estilização CSS Customizada para Mobile (Responsividade e Tabelas)
+# Estilização CSS Customizada (Light Mode Estrito, Hover e Bordas)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    html, body, [class*="css"] {
-        font-size: 16px;
+    /* Força tema Light Mode */
+    :root {
+        color-scheme: light !important;
     }
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #FFFFFF !important;
+        color: #1F2937 !important;
+    }
+    
+    /* Bordas aparentes nos dropdowns / selectbox */
+    div[data-baseweb="select"] > div {
+        border: 1.5px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        background-color: #F8FAFC !important;
+    }
+    
+    /* Tabelas modernas com bordas e efeito Hover nas linhas */
     .table-responsive {
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
     }
-    table.table {
+    table.custom-table {
         width: 100%;
-        max-width: 100%;
-        background-color: transparent;
-        white-space: nowrap;
+        border-collapse: collapse;
         font-size: 14px;
+        color: #1F2937;
     }
-    table.table th, table.table td {
+    table.custom-table th {
+        background-color: #F1F5F9;
+        font-weight: 700;
+        border: 1px solid #CBD5E1;
+        padding: 10px 14px;
+        text-align: center;
+    }
+    table.custom-table td {
+        border: 1px solid #E2E8F0;
         padding: 8px 12px;
         text-align: center;
-        border-top: 1px solid #dee2e6;
+        transition: background-color 0.2s ease;
     }
-    table.table th {
-        background-color: #f8f9fa;
-        font-weight: bold;
-    }
-    .kpi-card {
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .kpi-title {
-        font-size: 13px;
-        color: #6c757d;
+    table.custom-table tr:hover td {
+        background-color: #E0F2FE !important; /* Destaque ao passar o mouse */
         font-weight: 600;
-        text-transform: uppercase;
     }
-    .kpi-value {
-        font-size: 24px;
-        font-weight: bold;
-        color: #212529;
-        margin-top: 5px;
+    
+    /* Subtítulo no cabeçalho */
+    .header-subtitle {
+        background-color: #EFF6FF;
+        border-left: 4px solid #2563EB;
+        padding: 10px 15px;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1E40AF;
+        margin-bottom: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -177,11 +191,11 @@ PRODUCT_CATALOG = [
 ]
 
 METAS_STAFF = {
-    'MERCOSUL VEICULOS LTDA (ARARANGUÁ)': {'994': 10, '127': 2, '137': 1, '931': 2, '932': 2},
-    'MERCOSUL VEICULOS LTDA (CRICIÚMA)': {'994': 6, '127': 3, '137': 2, '931': 2, '932': 2},
-    'MERCOSUL VEÍCULOS LTDA (LAGES)': {'994': 8, '127': 4, '137': 1, '931': 3, '932': 3},
-    'MERCOSUL VEICULOS LTDA (TUBARÃO)': {'994': 10, '127': 4, '137': 2, '931': 3, '932': 3},
-    'MERCOSUL VEICULOS LTDA (VIDEIRA)': {'994': 6, '127': 3, '137': 1, '931': 2, '932': 2},
+    'ARARANGUÁ': {'994': 10, '127': 2, '137': 1, '931': 2, '932': 2},
+    'CRICIÚMA': {'994': 6, '127': 3, '137': 2, '931': 2, '932': 2},
+    'LAGES': {'994': 8, '127': 4, '137': 1, '931': 3, '932': 3},
+    'TUBARÃO': {'994': 10, '127': 4, '137': 2, '931': 3, '932': 3},
+    'VIDEIRA': {'994': 6, '127': 3, '137': 1, '931': 2, '932': 2},
 }
 
 STAFF_SKUS_INFO = [
@@ -217,7 +231,6 @@ def map_info(ref):
     return info.get('sku', None), info.get('desc', 'Outros')
 
 def save_to_database(file_pass, file_vend):
-    # Processa Passagens (OS CSP)
     raw_p = pd.read_excel(file_pass)
     df_p = raw_p.copy()
     df_p['TipoOS'] = df_p['TipoOS_Sigla'].astype(str).str.strip()
@@ -237,13 +250,11 @@ def save_to_database(file_pass, file_vend):
         })
     
     if passagens_list:
-        # Inserção em lotes ignorando duplicatas por constraint UNIQUE
         try:
             supabase.table("passagens").upsert(passagens_list, on_conflict="os_codigo,os_numero").execute()
         except Exception:
             pass
 
-    # Processa Vendas (NF)
     raw_v = pd.read_excel(file_vend)
     df_v = raw_v.copy()
     df_v['NF_Numero'] = pd.to_numeric(df_v['NF_Numero'], errors='coerce').fillna(0).astype(int)
@@ -278,7 +289,6 @@ def save_to_database(file_pass, file_vend):
         except Exception:
             pass
 
-    # Registra Log de Upload
     agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     supabase.table("uploads_log").insert({"arquivo_tipo": "Vendas & Passagens", "data_upload": agora}).execute()
 
@@ -295,21 +305,58 @@ def load_data_from_db():
         st.error(f"Erro ao carregar dados do Supabase: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
+# Modal / Pop-up de Análise do Consultor
+@st.dialog("📋 Análise Conversacional do Consultor")
+def abrir_modal_consultor(short_n, mes_sel, loja_formatada, tot_latas_c, tot_os_c, conv_c, produtos_nao_vendidos_lista):
+    st.markdown(f"### 👤 {short_n}")
+    
+    col_c1, col_c2, col_c3 = st.columns(3)
+    col_c1.metric("Total Latas", tot_latas_c)
+    col_c2.metric("Passagens CSP", tot_os_c)
+    col_c3.metric("Conversão", f"{conv_c:.2f}")
+
+    saudacao = f"Fala, *{short_n}*! Tudo joia? 🚀 Passando para dar aquela conferida rápida no nosso ritmo da campanha TUNAP em *{mes_sel}* por *{loja_formatada}*."
+    
+    if conv_c >= 2.40:
+        desempenho_msg = f"📈 Seu ritmo está excelente! Você já soma {tot_latas_c} latas em {tot_os_c} passagens CSP, alcançando uma conversão fantástica de *{conv_c:.2f}* (acima da nossa meta de 2.40). Parabéns pelo foco e dedicação!"
+    else:
+        falta_conv = round(2.40 - conv_c, 2)
+        desempenho_msg = f"📊 Até o momento, registramos {tot_latas_c} latas em {tot_os_c} passagens CSP, gerando uma conversão de *{conv_c:.2f}*. Estamos muito perto da meta de 2.40 (faltam apenas {falta_conv} pontos na média), e tenho certeza que com alguns ajustes nos próximos atendimentos vamos buscar esse objetivo!"
+
+    if produtos_nao_vendidos_lista:
+        oportunidades_msg = f"💡 *Oportunidades de Ouro (Produtos que ainda não saíram nas suas OS):*\n" + "\n".join([f"• ⚠️ {item}" for item in produtos_nao_vendidos_lista[:6]]) + f"\n*(E mais alguns itens do catálogo)*\n\n🎯 Focar nesses itens nos balcões vai turbinar o seu mix e maximizar seus ganhos!"
+    else:
+        oportunidades_msg = f"🎉 Espetacular! Você já pontuou com absolutamente todos os produtos do mix! Trabalho impecável!"
+
+    fechamento = f"Vamos pra cima nas próximas passagens! Qualquer dúvida ou apoio que precisar, estou à disposição. Bom trabalho e excelentes vendas! 👊🔥"
+
+    texto_wpp_consultor = f"{saudacao}\n\n{desempenho_msg}\n\n{oportunidades_msg}\n\n{fechamento}"
+
+    st.markdown("**Mensagem Inteligente pronta para o WhatsApp:**")
+    st.code(texto_wpp_consultor, language="markdown")
+
 # -----------------------------------------------------------------------------
 # Barra Lateral (Sidebar)
 # -----------------------------------------------------------------------------
+# 1. Logotipo TUNAP no topo
+LOGOTIPO_URL = "https://lh3.googleusercontent.com/d/1d2F_6boMmZx4G9ti3vf9C0izJjGIU0Ox=s400"
+st.sidebar.image(LOGOTIPO_URL, use_container_width=True)
 st.sidebar.markdown("---")
 
 df_vendas_init, df_pass_init = load_data_from_db()
 
 if not df_vendas_init.empty and 'empresa' in df_vendas_init.columns:
-    lojas = sorted(df_vendas_init['empresa'].unique().tolist())
+    lojas_brutas = sorted(df_vendas_init['empresa'].unique().tolist())
+    # Exibe apenas o nome resumido (entre parênteses)
+    lojas_map = {format_loja_name(l): l for l in lojas_brutas}
+    lojas_display = sorted(list(lojas_map.keys()))
     
     default_loja_index = 0
-    if "loja_sel" in st.session_state and st.session_state.loja_sel in lojas:
-        default_loja_index = lojas.index(st.session_state.loja_sel)
+    if "loja_sel_display" in st.session_state and st.session_state.loja_sel_display in lojas_display:
+        default_loja_index = lojas_display.index(st.session_state.loja_sel_display)
 
-    loja_sel = st.sidebar.selectbox("Concessionária:", lojas, index=default_loja_index, key="loja_sel")
+    loja_display_sel = st.sidebar.selectbox("Concessionária:", lojas_display, index=default_loja_index, key="loja_sel_display")
+    loja_sel = lojas_map[loja_display_sel]
     
     meses_dict = {
         "Setembro": "09", 
@@ -332,6 +379,7 @@ if not df_vendas_init.empty and 'empresa' in df_vendas_init.columns:
     num_mes = meses_dict[mes_sel]
 else:
     loja_sel = None
+    loja_display_sel = "Criciúma"
     num_mes = datetime.now().strftime('%m')
     mes_sel = "Outubro"
     st.sidebar.info("Banco no Supabase vazio. Faça o upload abaixo.")
@@ -343,10 +391,10 @@ file_pass = st.sidebar.file_uploader("Relatório de Passagens (OS)", type=["xlsx
 file_vend = st.sidebar.file_uploader("Relatório de Vendas (NF)", type=["xlsx", "xls"])
 
 if file_pass and file_vend:
-    if st.sidebar.button("💾 Salvar Novos Dados no Supabase", use_container_width=True):
-        with st.spinner("Processando e salvando na nuvem..."):
+    if st.sidebar.button("🔄 Atualizar dados", use_container_width=True):
+        with st.spinner("Processando e atualizando na nuvem..."):
             save_to_database(file_pass, file_vend)
-            st.sidebar.success("🟢 Dados salvos permanentemente no Supabase!")
+            st.sidebar.success("🟢 Dados atualizados no Supabase!")
             st.rerun()
 
 st.sidebar.markdown("---")
@@ -387,6 +435,13 @@ else:
 # -----------------------------------------------------------------------------
 st.title("🚗 TUNAP | Campanha Mercosul")
 
+# Subtítulo Informativo com Loja e Período
+st.markdown(f"""
+    <div class="header-subtitle">
+        📍 Concessionária: <b>{loja_display_sel}</b> &nbsp;|&nbsp; 📅 Período: <b>{mes_sel}/2026</b>
+    </div>
+""", unsafe_allow_html=True)
+
 df_vendas, df_pass = load_data_from_db()
 
 if df_vendas.empty:
@@ -395,7 +450,7 @@ else:
     v_filtered = df_vendas[(df_vendas['empresa'] == loja_sel) & (df_vendas['data_venda'].str[3:5] == num_mes)] if not df_vendas.empty else pd.DataFrame()
     p_filtered = df_pass[(df_pass['empresa'] == loja_sel) & (df_pass['data_passagem'].str[3:5] == num_mes)] if not df_pass.empty else pd.DataFrame()
 
-    tab1, tab2, tab3 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerencial"])
+    tab1, tab2, tab3, tab4 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerencial", "📈 Analytics"])
 
     # --- ABA 1: CONSULTORES ---
     with tab1:
@@ -416,6 +471,31 @@ else:
         if not filtered_consultants:
             st.info("Nenhum consultor atingiu o volume mínimo de 10 latas no período.")
         else:
+            # Botões para acionar o Pop-up de Análise do Consultor no topo da tabela
+            st.write("🔍 **Clique para abrir a análise conversacional do consultor:**")
+            cols_pop = st.columns(min(len(filtered_consultants), 6))
+            for idx, c in enumerate(filtered_consultants):
+                short_n = consultant_display_map[c]
+                col_idx = idx % len(cols_pop)
+                with cols_pop[col_idx]:
+                    if st.button(f"👤 {short_n} 💬", key=f"btn_pop_{c}", use_container_width=True):
+                        c_vendas = v_filtered[v_filtered['consultor'] == c]
+                        c_pass = p_filtered[p_filtered['consultor'] == c]
+                        tot_latas_c = int(c_vendas['qtde'].sum())
+                        tot_os_c = int(c_pass['os_numero'].nunique())
+                        conv_c = round(tot_latas_c / tot_os_c, 2) if tot_os_c > 0 else 0.0
+                        
+                        prod_nao_vendidos = []
+                        for prod_ref, desc in PRODUCT_CATALOG:
+                            sku_alvo = PRODUCT_MAP.get(prod_ref, {}).get('sku')
+                            qtd_item = c_vendas[(c_vendas['prod_ref'] == prod_ref) | (c_vendas['sku'] == sku_alvo)]['qtde'].sum()
+                            if qtd_item == 0:
+                                prod_nao_vendidos.append(f"{desc} (SKU {sku_alvo})")
+                        
+                        abrir_modal_consultor(short_n, mes_sel, loja_display_sel, tot_latas_c, tot_os_c, conv_c, prod_nao_vendidos)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
             matrix_data = []
             totais_colunas = {c: 0 for c in filtered_consultants}
             mix_colunas = {c: set() for c in filtered_consultants}
@@ -460,59 +540,13 @@ else:
             df_matrix = pd.DataFrame(matrix_data)
             
             st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
-            st.markdown(df_matrix.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
+            st.markdown(df_matrix.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown("---")
-            st.subheader("📋 Análise e Oportunidades por Consultor")
-            st.write("Abra o painel abaixo de cada consultor para conferir a análise conversacional e copiar para o WhatsApp:")
-
-            for c in filtered_consultants:
-                short_n = consultant_display_map[c]
-                with st.expander(f"👤 Consultor: {short_n} (Resumo Inteligente)"):
-                    c_vendas = v_filtered[v_filtered['consultor'] == c]
-                    c_pass = p_filtered[p_filtered['consultor'] == c]
-                    
-                    tot_latas_c = int(c_vendas['qtde'].sum())
-                    tot_os_c = int(c_pass['os_numero'].nunique())
-                    conv_c = round(tot_latas_c / tot_os_c, 2) if tot_os_c > 0 else 0.0
-                    
-                    produtos_nao_vendidos_lista = []
-                    for prod_ref, desc in PRODUCT_CATALOG:
-                        sku_alvo = PRODUCT_MAP.get(prod_ref, {}).get('sku')
-                        qtd_item = c_vendas[(c_vendas['prod_ref'] == prod_ref) | (c_vendas['sku'] == sku_alvo)]['qtde'].sum()
-                        if qtd_item == 0:
-                            produtos_nao_vendidos_lista.append(f"• {desc} (SKU {sku_alvo})")
-
-                    col_c1, col_c2, col_c3 = st.columns(3)
-                    col_c1.metric("Total Latas", tot_latas_c)
-                    col_c2.metric("Passagens CSP", tot_os_c)
-                    col_c3.metric("Conversão", f"{conv_c:.2f}")
-
-                    saudacao = f"Fala, *{short_n}*! Tudo joia? 🚀 Passando para dar aquela conferida rápida no nosso ritmo da campanha TUNAP em *{mes_sel}* por *{format_loja_name(loja_sel)}*."
-                    
-                    if conv_c >= 2.40:
-                        desempenho_msg = f"📈 Seu ritmo está excelente! Você já soma {tot_latas_c} latas em {tot_os_c} passagens CSP, alcançando uma conversão fantástica de *{conv_c:.2f}* (acima da nossa meta de 2.40). Parabéns pelo foco e dedicação!"
-                    else:
-                        falta_conv = round(2.40 - conv_c, 2)
-                        desempenho_msg = f"📊 Até o momento, registramos {tot_latas_c} latas em {tot_os_c} passagens CSP, gerando uma conversão de *{conv_c:.2f}*. Estamos muito perto da meta de 2.40 (faltam apenas {falta_conv} pontos na média), e tenho certeza que com alguns ajustes nos próximos atendimentos vamos buscar esse objetivo!"
-
-                    if produtos_nao_vendidos_lista:
-                        oportunidades_msg = f"💡 *Oportunidades de Ouro (Produtos que ainda não saíram nas suas OS):*\n" + "\n".join([f"• ⚠️ {item}" for item in produtos_nao_vendidos_lista[:6]]) + f"\n*(E mais alguns itens do catálogo)*\n\n🎯 Focar nesses itens nos balcões vai turbinar o seu mix e maximizar seus ganhos!"
-                    else:
-                        oportunidades_msg = f"🎉 Espetacular! Você já pontuou com absolutamente todos os produtos do mix! Trabalho impecável!"
-
-                    fechamento = f"Vamos pra cima nas próximas passagens! Qualquer dúvida ou apoio que precisar, estou à disposição. Bom trabalho e excelentes vendas! 👊🔥"
-
-                    texto_wpp_consultor = f"{saudacao}\n\n{desempenho_msg}\n\n{oportunidades_msg}\n\n{fechamento}"
-
-                    st.markdown("**Mensagem Inteligente pronta para o WhatsApp:**")
-                    st.code(texto_wpp_consultor, language="markdown")
 
     # --- ABA 2: EQUIPE TÉCNICA ---
     with tab2:
         st.subheader("Acompanhamento da Equipe Técnica")
-        metas_loja = METAS_STAFF.get(loja_sel, {})
+        metas_loja = METAS_STAFF.get(loja_display_sel, {})
         
         tot_v = int(v_filtered['qtde'].sum()) if not v_filtered.empty else 0
         tot_p = int(p_filtered['os_numero'].nunique()) if not p_filtered.empty else 0
@@ -555,7 +589,7 @@ else:
 
         df_staff = pd.DataFrame(staff_rows)
         st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
-        st.markdown(df_staff.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
+        st.markdown(df_staff.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         premio = "🏆 ELEGÍVEL À PREMIAÇÃO" if (todos_skus and taxa_conv >= meta_conv) else "❌ NÃO ELEGÍVEL"
@@ -617,5 +651,51 @@ else:
 
             df_gerencial_global = pd.DataFrame(gerencial_rows)
             st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
-            st.markdown(df_gerencial_global.to_html(index=False, classes="table table-striped"), unsafe_allow_html=True)
+            st.markdown(df_gerencial_global.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- ABA 4: ANALYTICS & RESULTADOS DA CAMPANHA ---
+    with tab4:
+        st.subheader("📈 Relatório Visual de Desempenho e Resultados")
+        st.write("Análise gráfica mês a mês para acompanhamento de tendências da campanha:")
+
+        # Tratamento de dados temporais
+        df_v_analytics = df_vendas[df_vendas['empresa'] == loja_sel].copy() if not df_vendas.empty else pd.DataFrame()
+        df_p_analytics = df_pass[df_pass['empresa'] == loja_sel].copy() if not df_pass.empty else pd.DataFrame()
+
+        if df_v_analytics.empty:
+            st.info("Sem dados suficientes da concessionária para gerar gráficos.")
+        else:
+            df_v_analytics['mes'] = df_v_analytics['data_venda'].str[3:5]
+            df_p_analytics['mes'] = df_p_analytics['data_passagem'].str[3:5]
+
+            meses_map_inv = {"09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"}
+            
+            # Groupbys por Mês
+            v_por_mes = df_v_analytics.groupby('mes')['qtde'].sum().reset_index()
+            p_por_mes = df_p_analytics.groupby('mes')['os_numero'].nunique().reset_index()
+
+            df_evolucao = pd.merge(v_por_mes, p_por_mes, on='mes', how='outer').fillna(0)
+            df_evolucao['Nome_Mes'] = df_evolucao['mes'].map(meses_map_inv)
+            df_evolucao['Conversao'] = np.where(df_evolucao['os_numero'] > 0, (df_evolucao['qtde'] / df_evolucao['os_numero']).round(2), 0)
+            df_evolucao = df_evolucao.sort_values('mes')
+
+            # Gráficos em colunas
+            c_g1, c_g2 = st.columns(2)
+
+            with c_g1:
+                st.markdown("#### 📦 Volume de Latas Vendidas (Mês a Mês)")
+                st.bar_chart(data=df_evolucao, x="Nome_Mes", y="qtde", color="#2563EB", use_container_width=True)
+
+            with c_g2:
+                st.markdown("#### 🎯 Taxa de Conversão vs Meta (Mês a Mês)")
+                st.line_chart(data=df_evolucao, x="Nome_Mes", y="Conversao", color="#059669", use_container_width=True)
+
+            st.markdown("---")
+            st.markdown("#### 🛍️ Participação por Linha de Produto (SKUs)")
+            
+            # Análise por Produto
+            prod_vendas = df_v_analytics.groupby('descricao')['qtde'].sum().reset_index()
+            prod_vendas = prod_vendas.sort_values('qtde', ascending=False)
+
+            st.bar_chart(data=prod_vendas, x="descricao", y="qtde", color="#D97706", use_container_width=True)
