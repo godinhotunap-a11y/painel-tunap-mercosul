@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import sqlite3
 from datetime import datetime
+from supabase import create_client, Client
 
 # Configuração da página (otimizada para mobile/desktop)
 st.set_page_config(
@@ -11,6 +11,17 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="auto"
 )
+
+# -----------------------------------------------------------------------------
+# Configuração de Conexão com o Supabase
+# -----------------------------------------------------------------------------
+@st.cache_resource
+def init_supabase() -> Client:
+    url = st.secrets["supabase"]["url"]
+    key = st.secrets["supabase"]["key"]
+    return create_client(url, key)
+
+supabase = init_supabase()
 
 # -----------------------------------------------------------------------------
 # Estilização CSS Customizada para Mobile (Responsividade e Tabelas)
@@ -67,90 +78,46 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Configuração do Banco de Dados SQLite (base.db)
+# Funções de Banco de Dados (Supabase)
 # -----------------------------------------------------------------------------
-DB_NAME = "base.db"
-
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS vendas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            empresa TEXT,
-            consultor TEXT,
-            nf_numero INTEGER,
-            nf_item_cod INTEGER,
-            prod_ref TEXT,
-            sku TEXT,
-            descricao TEXT,
-            qtde REAL,
-            data_venda TEXT,
-            UNIQUE(nf_numero, nf_item_cod, prod_ref)
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS passagens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            empresa TEXT,
-            consultor TEXT,
-            os_codigo TEXT,
-            os_numero TEXT,
-            data_passagem TEXT,
-            UNIQUE(os_codigo, os_numero)
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS uploads_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            arquivo_tipo TEXT,
-            data_upload TEXT
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-
-init_db()
-
 def clear_database():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM vendas")
-    cursor.execute("DELETE FROM passagens")
-    cursor.execute("DELETE FROM uploads_log")
-    conn.commit()
-    conn.close()
+    try:
+        supabase.table("vendas").delete().neq("id", 0).execute()
+        supabase.table("passagens").delete().neq("id", 0).execute()
+        supabase.table("uploads_log").delete().neq("id", 0).execute()
+        return True
+    except Exception as e:
+        st.error(f"Erro ao limpar banco: {e}")
+        return False
 
 def get_db_status():
-    conn = sqlite3.connect(DB_NAME)
-    
-    df_v = pd.read_sql("SELECT data_venda FROM vendas", conn)
-    min_v, max_v = "N/A", "N/A"
-    if not df_v.empty:
-        valid_v = pd.to_datetime(df_v['data_venda'], format='%d/%m/%Y', errors='coerce').dropna()
-        if not valid_v.empty:
-            min_v = valid_v.min().strftime('%d/%m/%Y')
-            max_v = valid_v.max().strftime('%d/%m/%Y')
+    try:
+        res_v = supabase.table("vendas").select("data_venda").execute()
+        df_v = pd.DataFrame(res_v.data) if res_v.data else pd.DataFrame()
+        min_v, max_v = "N/A", "N/A"
+        if not df_v.empty and 'data_venda' in df_v.columns:
+            valid_v = pd.to_datetime(df_v['data_venda'], format='%d/%m/%Y', errors='coerce').dropna()
+            if not valid_v.empty:
+                min_v = valid_v.min().strftime('%d/%m/%Y')
+                max_v = valid_v.max().strftime('%d/%m/%Y')
 
-    df_p = pd.read_sql("SELECT data_passagem FROM passagens", conn)
-    min_p, max_p = "N/A", "N/A"
-    if not df_p.empty:
-        valid_p = pd.to_datetime(df_p['data_passagem'], format='%d/%m/%Y', errors='coerce').dropna()
-        if not valid_p.empty:
-            min_p = valid_p.min().strftime('%d/%m/%Y')
-            max_p = valid_p.max().strftime('%d/%m/%Y')
+        res_p = supabase.table("passagens").select("data_passagem").execute()
+        df_p = pd.DataFrame(res_p.data) if res_p.data else pd.DataFrame()
+        min_p, max_p = "N/A", "N/A"
+        if not df_p.empty and 'data_passagem' in df_p.columns:
+            valid_p = pd.to_datetime(df_p['data_passagem'], format='%d/%m/%Y', errors='coerce').dropna()
+            if not valid_p.empty:
+                min_p = valid_p.min().strftime('%d/%m/%Y')
+                max_p = valid_p.max().strftime('%d/%m/%Y')
 
-    df_log = pd.read_sql("SELECT data_upload FROM uploads_log ORDER BY id DESC LIMIT 1", conn)
-    ultimo_upload = "Nenhum upload"
-    if not df_log.empty:
-        ultimo_upload = df_log['data_upload'].iloc[0]
+        res_log = supabase.table("uploads_log").select("data_upload").order("id", desc=True).limit(1).execute()
+        ultimo_upload = "Nenhum upload"
+        if res_log.data:
+            ultimo_upload = res_log.data[0]['data_upload']
 
-    conn.close()
-    return min_v, max_v, min_p, max_p, ultimo_upload
+        return min_v, max_v, min_p, max_p, ultimo_upload
+    except Exception:
+        return "N/A", "N/A", "N/A", "N/A", "Nenhum upload"
 
 # -----------------------------------------------------------------------------
 # Dicionários e Mapeamentos
@@ -250,8 +217,7 @@ def map_info(ref):
     return info.get('sku', None), info.get('desc', 'Outros')
 
 def save_to_database(file_pass, file_vend):
-    conn = sqlite3.connect(DB_NAME)
-    
+    # Processa Passagens (OS CSP)
     raw_p = pd.read_excel(file_pass)
     df_p = raw_p.copy()
     df_p['TipoOS'] = df_p['TipoOS_Sigla'].astype(str).str.strip()
@@ -260,15 +226,24 @@ def save_to_database(file_pass, file_vend):
     df_csp['Empresa'] = df_csp['Empresa_Nome'].astype(str).str.strip()
     df_csp['DataPassagem'] = parse_dms_date(df_csp['NotaFiscal_DataEmissao'])
     
+    passagens_list = []
     for _, row in df_csp.iterrows():
+        passagens_list.append({
+            'empresa': row['Empresa'],
+            'consultor': row['Consultor'],
+            'os_codigo': str(row['OS_Codigo']),
+            'os_numero': str(row['OS_Numero']),
+            'data_passagem': row['DataPassagem']
+        })
+    
+    if passagens_list:
+        # Inserção em lotes ignorando duplicatas por constraint UNIQUE
         try:
-            conn.execute('''
-                INSERT OR IGNORE INTO passagens (empresa, consultor, os_codigo, os_numero, data_passagem)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (row['Empresa'], row['Consultor'], str(row['OS_Codigo']), str(row['OS_Numero']), row['DataPassagem']))
-        except:
+            supabase.table("passagens").upsert(passagens_list, on_conflict="os_codigo,os_numero").execute()
+        except Exception:
             pass
 
+    # Processa Vendas (NF)
     raw_v = pd.read_excel(file_vend)
     df_v = raw_v.copy()
     df_v['NF_Numero'] = pd.to_numeric(df_v['NF_Numero'], errors='coerce').fillna(0).astype(int)
@@ -281,29 +256,44 @@ def save_to_database(file_pass, file_vend):
     df_v['Qtde'] = pd.to_numeric(df_v['NFItem_Qtde'], errors='coerce').fillna(0)
     df_v['DataVenda'] = parse_dms_date(df_v['NF_Dataemis'])
 
+    vendas_list = []
     for _, row in df_v.iterrows():
         sku, desc = map_info(row['ProdRef'])
         if sku:
-            try:
-                conn.execute('''
-                    INSERT OR REPLACE INTO vendas (empresa, consultor, nf_numero, nf_item_cod, prod_ref, sku, descricao, qtde, data_venda)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (row['Empresa'], row['Consultor'], row['NF_Numero'], row['NFItem_Cod'], row['ProdRef'], sku, desc, row['Qtde'], row['DataVenda']))
-            except:
-                pass
+            vendas_list.append({
+                'empresa': row['Empresa'],
+                'consultor': row['Consultor'],
+                'nf_numero': int(row['NF_Numero']),
+                'nf_item_cod': int(row['NFItem_Cod']),
+                'prod_ref': row['ProdRef'],
+                'sku': sku,
+                'descricao': desc,
+                'qtde': float(row['Qtde']),
+                'data_venda': row['DataVenda']
+            })
 
+    if vendas_list:
+        try:
+            supabase.table("vendas").upsert(vendas_list, on_conflict="nf_numero,nf_item_cod,prod_ref").execute()
+        except Exception:
+            pass
+
+    # Registra Log de Upload
     agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    conn.execute("INSERT INTO uploads_log (arquivo_tipo, data_upload) VALUES (?, ?)", ("Vendas & Passagens", agora))
-
-    conn.commit()
-    conn.close()
+    supabase.table("uploads_log").insert({"arquivo_tipo": "Vendas & Passagens", "data_upload": agora}).execute()
 
 def load_data_from_db():
-    conn = sqlite3.connect(DB_NAME)
-    df_vendas = pd.read_sql("SELECT * FROM vendas", conn)
-    df_pass = pd.read_sql("SELECT * FROM passagens", conn)
-    conn.close()
-    return df_vendas, df_pass
+    try:
+        res_v = supabase.table("vendas").select("*").execute()
+        df_vendas = pd.DataFrame(res_v.data) if res_v.data else pd.DataFrame(columns=['id', 'empresa', 'consultor', 'nf_numero', 'nf_item_cod', 'prod_ref', 'sku', 'descricao', 'qtde', 'data_venda'])
+
+        res_p = supabase.table("passagens").select("*").execute()
+        df_pass = pd.DataFrame(res_p.data) if res_p.data else pd.DataFrame(columns=['id', 'empresa', 'consultor', 'os_codigo', 'os_numero', 'data_passagem'])
+
+        return df_vendas, df_pass
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do Supabase: {e}")
+        return pd.DataFrame(), pd.DataFrame()
 
 # -----------------------------------------------------------------------------
 # Barra Lateral (Sidebar)
@@ -312,7 +302,7 @@ st.sidebar.markdown("---")
 
 df_vendas_init, df_pass_init = load_data_from_db()
 
-if not df_vendas_init.empty:
+if not df_vendas_init.empty and 'empresa' in df_vendas_init.columns:
     lojas = sorted(df_vendas_init['empresa'].unique().tolist())
     
     default_loja_index = 0
@@ -344,7 +334,7 @@ else:
     loja_sel = None
     num_mes = datetime.now().strftime('%m')
     mes_sel = "Outubro"
-    st.sidebar.info("Banco vazio. Faça o upload abaixo.")
+    st.sidebar.info("Banco no Supabase vazio. Faça o upload abaixo.")
 
 st.sidebar.markdown("---")
 
@@ -353,14 +343,14 @@ file_pass = st.sidebar.file_uploader("Relatório de Passagens (OS)", type=["xlsx
 file_vend = st.sidebar.file_uploader("Relatório de Vendas (NF)", type=["xlsx", "xls"])
 
 if file_pass and file_vend:
-    if st.sidebar.button("💾 Salvar Novos Dados no Banco", use_container_width=True):
-        with st.spinner("Processando e salvando no base.db..."):
+    if st.sidebar.button("💾 Salvar Novos Dados no Supabase", use_container_width=True):
+        with st.spinner("Processando e salvando na nuvem..."):
             save_to_database(file_pass, file_vend)
-            st.sidebar.success("🟢 Dados acumulados com sucesso no banco!")
+            st.sidebar.success("🟢 Dados salvos permanentemente no Supabase!")
             st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📊 Status dos Dados")
+st.sidebar.subheader("📊 Status dos Dados na Nuvem")
 
 min_v, max_v, min_p, max_p, ultimo_upload = get_db_status()
 
@@ -375,11 +365,11 @@ if "confirm_clear" not in st.session_state:
     st.session_state.confirm_clear = False
 
 if not st.session_state.confirm_clear:
-    if st.sidebar.button("🧹 Limpar Banco de Dados", use_container_width=True):
+    if st.sidebar.button("🧹 Limpar Banco do Supabase", use_container_width=True):
         st.session_state.confirm_clear = True
         st.rerun()
 else:
-    st.sidebar.warning("Tem certeza? Todos os dados serão apagados!")
+    st.sidebar.warning("Tem certeza? Todos os dados na nuvem serão apagados!")
     col_bt1, col_bt2 = st.sidebar.columns(2)
     with col_bt1:
         if st.button("Sim, apagar", use_container_width=True):
@@ -400,10 +390,10 @@ st.title("🚗 TUNAP | Campanha Mercosul")
 df_vendas, df_pass = load_data_from_db()
 
 if df_vendas.empty:
-    st.warning("⚠️ O banco de dados (`base.db`) não possui registros. Faça o upload dos relatórios na barra lateral.")
+    st.warning("⚠️ O banco de dados no Supabase não possui registros. Faça o upload dos relatórios na barra lateral.")
 else:
-    v_filtered = df_vendas[(df_vendas['empresa'] == loja_sel) & (df_vendas['data_venda'].str[3:5] == num_mes)]
-    p_filtered = df_pass[(df_pass['empresa'] == loja_sel) & (df_pass['data_passagem'].str[3:5] == num_mes)]
+    v_filtered = df_vendas[(df_vendas['empresa'] == loja_sel) & (df_vendas['data_venda'].str[3:5] == num_mes)] if not df_vendas.empty else pd.DataFrame()
+    p_filtered = df_pass[(df_pass['empresa'] == loja_sel) & (df_pass['data_passagem'].str[3:5] == num_mes)] if not df_pass.empty else pd.DataFrame()
 
     tab1, tab2, tab3 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerencial"])
 
@@ -411,7 +401,7 @@ else:
     with tab1:
         st.subheader("Vendas por Consultor")
         
-        all_consultants = sorted(list(set(p_filtered['consultor'].tolist() + v_filtered['consultor'].tolist())))
+        all_consultants = sorted(list(set(p_filtered['consultor'].tolist() + v_filtered['consultor'].tolist()))) if not v_filtered.empty else []
         filtered_consultants = []
         consultant_display_map = {}
 
@@ -499,7 +489,6 @@ else:
                     col_c2.metric("Passagens CSP", tot_os_c)
                     col_c3.metric("Conversão", f"{conv_c:.2f}")
 
-                    # Inteligência Conversacional de IA para o WhatsApp
                     saudacao = f"Fala, *{short_n}*! Tudo joia? 🚀 Passando para dar aquela conferida rápida no nosso ritmo da campanha TUNAP em *{mes_sel}* por *{format_loja_name(loja_sel)}*."
                     
                     if conv_c >= 2.40:
@@ -525,15 +514,15 @@ else:
         st.subheader("Acompanhamento da Equipe Técnica")
         metas_loja = METAS_STAFF.get(loja_sel, {})
         
-        tot_v = int(v_filtered['qtde'].sum())
-        tot_p = int(p_filtered['os_numero'].nunique())
+        tot_v = int(v_filtered['qtde'].sum()) if not v_filtered.empty else 0
+        tot_p = int(p_filtered['os_numero'].nunique()) if not p_filtered.empty else 0
         taxa_conv = round(tot_v / tot_p, 2) if tot_p > 0 else 0.0
 
         staff_rows = []
         todos_skus = True
         for sku, desc in STAFF_SKUS_INFO:
             meta = metas_loja.get(sku, 0)
-            realizado = int(v_filtered[v_filtered['sku'] == sku]['qtde'].sum())
+            realizado = int(v_filtered[v_filtered['sku'] == sku]['qtde'].sum()) if not v_filtered.empty else 0
             gap = realizado - meta
             pct = round((realizado / meta) * 100, 1) if meta > 0 else 0.0
             status = "🟢 Atingida" if realizado >= meta else f"🔴 Falta {abs(gap)}"
@@ -577,8 +566,8 @@ else:
         st.subheader(f"Visão Gerencial Consolidada - {mes_sel}/2026")
         st.write("Panorama geral consolidado de **todas as concessionárias** cadastradas no período selecionado:")
 
-        v_gerencial_global = df_vendas[df_vendas['data_venda'].str[3:5] == num_mes]
-        p_gerencial_global = df_pass[df_pass['data_passagem'].str[3:5] == num_mes]
+        v_gerencial_global = df_vendas[df_vendas['data_venda'].str[3:5] == num_mes] if not df_vendas.empty else pd.DataFrame()
+        p_gerencial_global = df_pass[df_pass['data_passagem'].str[3:5] == num_mes] if not df_pass.empty else pd.DataFrame()
 
         if v_gerencial_global.empty:
             st.info("Nenhum dado registrado para o período gerencial selecionado.")
