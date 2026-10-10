@@ -129,9 +129,7 @@ def clear_database():
         return False
 
 def load_data_from_db():
-    """Carrega todas as vendas e passagens do Supabase usando paginação em lotes de 1000."""
     try:
-        # Paginação para a tabela de Vendas
         all_vendas = []
         batch_size = 1000
         offset = 0
@@ -145,7 +143,6 @@ def load_data_from_db():
 
         df_vendas = pd.DataFrame(all_vendas) if all_vendas else pd.DataFrame(columns=['id', 'empresa', 'consultor', 'nf_numero', 'nf_item_cod', 'prod_ref', 'sku', 'descricao', 'qtde', 'data_venda'])
 
-        # Paginação para a tabela de Passagens
         all_pass = []
         offset = 0
         while True:
@@ -490,7 +487,6 @@ st.markdown(f"""
 if df_vendas.empty:
     st.warning("⚠️ O banco de dados no Supabase não possui registros. Faça o upload dos relatórios na barra lateral.")
 else:
-    # Filtra dados garantindo correspondência insensível a maiúsculas
     v_filtered = df_vendas[(df_vendas['empresa'].astype(str).str.upper() == str(loja_sel).upper()) & (df_vendas['data_venda'].str[3:5] == num_mes)] if not df_vendas.empty else pd.DataFrame()
     p_filtered = df_pass[(df_pass['empresa'].astype(str).str.upper() == str(loja_sel).upper()) & (df_pass['data_passagem'].str[3:5] == num_mes)] if not df_pass.empty else pd.DataFrame()
 
@@ -500,17 +496,20 @@ else:
     with tab1:
         st.subheader("Vendas por Consultor")
         
-        all_consultants = sorted(list(set(p_filtered['consultor'].dropna().tolist() + v_filtered['consultor'].dropna().tolist()))) if not v_filtered.empty or not p_filtered.empty else []
+        # Filtro: Exibe apenas consultores que possuem pelo menos 1 passagem (OS CSP) no período
+        all_consultants = sorted(list(p_filtered['consultor'].dropna().unique())) if not p_filtered.empty else []
         filtered_consultants = []
         consultant_display_map = {}
 
         for c in all_consultants:
-            short_name = format_short_name(c)
-            filtered_consultants.append(c)
-            consultant_display_map[c] = short_name
+            tot_p = int(p_filtered[p_filtered['consultor'] == c]['os_numero'].nunique())
+            if tot_p > 0: # Exige pelo menos 1 passagem
+                short_name = format_short_name(c)
+                filtered_consultants.append(c)
+                consultant_display_map[c] = short_name
 
         if not filtered_consultants:
-            st.info("Nenhum consultor registrado para esta concessionária no período selecionado.")
+            st.info("Nenhum consultor com passagens registradas para esta concessionária no período selecionado.")
         else:
             st.write("📊 **Clique no botão do consultor para abrir a análise:**")
             cols_consultores_btns = st.columns(min(len(filtered_consultants), 6))
