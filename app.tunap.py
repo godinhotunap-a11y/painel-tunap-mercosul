@@ -364,7 +364,10 @@ def abrir_modal_consultor(short_n, mes_sel, loja_formatada, tot_latas_c, tot_os_
 # Barra Lateral
 # -----------------------------------------------------------------------------
 LOGOTIPO_URL = "https://lh3.googleusercontent.com/d/1ONAL_dfLAPxpQKxaynprv24hf2vx2Yde=s400"
-st.sidebar.image(LOGOTIPO_URL, width=120)
+st.sidebar.image(
+    LOGOTIPO_URL, 
+    use_container_width=False
+)
 st.sidebar.markdown("---")
 
 df_vendas_init, df_pass_init = load_data_from_db()
