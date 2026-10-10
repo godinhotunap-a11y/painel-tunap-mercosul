@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 from supabase import create_client, Client
 
-# Configuração da página (otimizada para mobile/desktop)
+# Configuração da página
 st.set_page_config(
     page_title="TUNAP | Campanha Mercosul",
     page_icon="🚗",
@@ -24,11 +24,10 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # -----------------------------------------------------------------------------
-# Estilização CSS Customizada (Light Mode Estrito, Hover e Bordas)
+# Estilização CSS Customizada (Light Mode Estrito, Hover e Larguras Fixas)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Força tema Light Mode */
     :root {
         color-scheme: light !important;
     }
@@ -37,22 +36,25 @@ st.markdown("""
         color: #1F2937 !important;
     }
     
-    /* Ajuste de proporção para a imagem no menu lateral */
     [data-testid="stSidebar"] img {
-        max-width: 180px !important;
+        max-width: 170px !important;
         height: auto !important;
         margin: 0 auto !important;
         display: block !important;
     }
     
-    /* Bordas aparentes nos dropdowns / selectbox */
+    /* Container compacto para o filtro do Analytics */
+    .compact-select {
+        max-width: 280px;
+        margin-bottom: 15px;
+    }
+    
     div[data-baseweb="select"] > div {
         border: 1.5px solid #CBD5E1 !important;
         border-radius: 8px !important;
         background-color: #F8FAFC !important;
     }
     
-    /* Tabelas modernas com bordas e efeito Hover nas linhas */
     .table-responsive {
         width: 100%;
         overflow-x: auto;
@@ -71,7 +73,7 @@ st.markdown("""
         background-color: #F1F5F9;
         font-weight: 700;
         border: 1px solid #CBD5E1;
-        padding: 10px 14px;
+        padding: 10px 12px;
         text-align: center;
     }
     table.custom-table td {
@@ -85,7 +87,20 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* Subtítulo no cabeçalho */
+    /* Formatação de texto sem rolagem horizontal no popup */
+    .wpp-box {
+        background-color: #F8FAFC;
+        border: 1px solid #CBD5E1;
+        border-radius: 8px;
+        padding: 12px;
+        font-family: monospace;
+        font-size: 13px;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        overflow-x: hidden !important;
+        color: #0F172A;
+    }
+
     .header-subtitle {
         background-color: #EFF6FF;
         border-left: 4px solid #2563EB;
@@ -100,7 +115,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Funções de Banco de Dados (Supabase)
+# Funções de Banco de Dados
 # -----------------------------------------------------------------------------
 def clear_database():
     try:
@@ -214,6 +229,8 @@ STAFF_SKUS_INFO = [
     ('932', 'Limpeza Corretiva DPF 932'),
 ]
 
+LOJAS_PADRAO_ORDEM = ['Araranguá', 'Criciúma', 'Lages', 'Tubarão', 'Videira']
+
 def format_short_name(name):
     parts = str(name).strip().split()
     if not parts:
@@ -313,8 +330,8 @@ def load_data_from_db():
         st.error(f"Erro ao carregar dados do Supabase: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
-# Modal / Pop-up de Análise do Consultor
-@st.dialog("📋 Análise Conversacional do Consultor")
+# Pop-up / Modal de Análise do Consultor
+@st.dialog("Análise do Consultor")
 def abrir_modal_consultor(short_n, mes_sel, loja_formatada, tot_latas_c, tot_os_c, conv_c, produtos_nao_vendidos_lista):
     st.markdown(f"### 👤 {short_n}")
     
@@ -340,15 +357,14 @@ def abrir_modal_consultor(short_n, mes_sel, loja_formatada, tot_latas_c, tot_os_
 
     texto_wpp_consultor = f"{saudacao}\n\n{desempenho_msg}\n\n{oportunidades_msg}\n\n{fechamento}"
 
-    st.markdown("**Mensagem Inteligente pronta para o WhatsApp:**")
-    st.code(texto_wpp_consultor, language="markdown")
+    st.markdown("**Mensagem pronta para envio:**")
+    st.markdown(f'<div class="wpp-box">{texto_wpp_consultor}</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Barra Lateral (Sidebar)
+# Barra Lateral
 # -----------------------------------------------------------------------------
-# Logotipo TUNAP com Proporção Otimizada
 LOGOTIPO_URL = "https://lh3.googleusercontent.com/d/1ONAL_dfLAPxpQKxaynprv24hf2vx2Yde=s400"
-st.sidebar.image(LOGOTIPO_URL, width=180)
+st.sidebar.image(LOGOTIPO_URL, width=170)
 st.sidebar.markdown("---")
 
 df_vendas_init, df_pass_init = load_data_from_db()
@@ -438,7 +454,7 @@ else:
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# Corpo Principal (Otimizado Mobile)
+# Corpo Principal
 # -----------------------------------------------------------------------------
 st.title("🚗 TUNAP | Campanha Mercosul")
 
@@ -477,13 +493,14 @@ else:
         if not filtered_consultants:
             st.info("Nenhum consultor atingiu o volume mínimo de 10 latas no período.")
         else:
-            st.write("🔍 **Clique para abrir a análise conversacional do consultor:**")
-            cols_pop = st.columns(min(len(filtered_consultants), 6))
+            # Lista de atalhos em botões compactos na mesma linha
+            st.write("📊 **Clique no botão do consultor para abrir a análise:**")
+            cols_consultores_btns = st.columns(min(len(filtered_consultants), 6))
             for idx, c in enumerate(filtered_consultants):
                 short_n = consultant_display_map[c]
-                col_idx = idx % len(cols_pop)
-                with cols_pop[col_idx]:
-                    if st.button(f"👤 {short_n} 💬", key=f"btn_pop_{c}", use_container_width=True):
+                col_idx = idx % len(cols_consultores_btns)
+                with cols_consultores_btns[col_idx]:
+                    if st.button(f"📊 {short_n}", key=f"btn_pop_{c}", use_container_width=True):
                         c_vendas = v_filtered[v_filtered['consultor'] == c]
                         c_pass = p_filtered[p_filtered['consultor'] == c]
                         tot_latas_c = int(c_vendas['qtde'].sum())
@@ -600,7 +617,7 @@ else:
         premio = "🏆 ELEGÍVEL À PREMIAÇÃO" if (todos_skus and taxa_conv >= meta_conv) else "❌ NÃO ELEGÍVEL"
         st.markdown(f"### Resultado Staff: **{premio}**")
 
-    # --- ABA 3: PAINEL GERENCIAL (Global - Todas as Lojas do Período) ---
+    # --- ABA 3: PAINEL GERENCIAL ---
     with tab3:
         st.subheader(f"Visão Gerencial Consolidada - {mes_sel}/2026")
         st.write("Panorama geral consolidado de **todas as concessionárias** cadastradas no período selecionado:")
@@ -659,11 +676,10 @@ else:
             st.markdown(df_gerencial_global.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- ABA 4: ANALYTICS GLOBAL (Sem Filtro dos Dropdowns Laterais) ---
+    # --- ABA 4: ANALYTICS GLOBAL ---
     with tab4:
         st.subheader("📈 Analytics & Desempenho Global da Campanha")
-        st.caption("Visão executiva completa da rede (não influenciada pelos filtros laterais)")
-
+        
         if df_vendas.empty or df_pass.empty:
             st.info("Sem dados cadastrados no banco para exibir análises globais.")
         else:
@@ -680,15 +696,16 @@ else:
             df_v_glob['Concessionaria'] = df_v_glob['empresa'].apply(format_loja_name)
             df_p_glob['Concessionaria'] = df_p_glob['empresa'].apply(format_loja_name)
 
+            # Gráficos Evolutivos
             col_a1, col_a2 = st.columns(2)
 
             with col_a1:
-                st.markdown("#### 📦 Volume de Latas por Concessionária (Mês a Mês)")
+                st.markdown("#### 📦 Volume de Latas por Concessionária")
                 v_pivot = df_v_glob.groupby(['Mes', 'Concessionaria'])['qtde'].sum().unstack().fillna(0)
                 st.line_chart(v_pivot, use_container_width=True)
 
             with col_a2:
-                st.markdown("#### 🎯 Taxa de Conversão por Concessionária (Mês a Mês)")
+                st.markdown("#### 🎯 Taxa de Conversão por Concessionária")
                 v_grp = df_v_glob.groupby(['Mes', 'Concessionaria'])['qtde'].sum().reset_index()
                 p_grp = df_p_glob.groupby(['Mes', 'Concessionaria'])['os_numero'].nunique().reset_index()
                 
@@ -699,22 +716,71 @@ else:
                 st.line_chart(conv_pivot, use_container_width=True)
 
             st.markdown("---")
-            st.subheader("🛍️ Desempenho de Produtos por Concessionária")
+            st.subheader("📊 Tabela Geral por Produto e Concessionária")
 
-            # Filtro exclusivo de período para a tabela de produtos
-            meses_unicos = sorted([m for m in df_v_glob['Mes'].dropna().unique() if m in meses_map_analytics.values()])
-            mes_analytics_sel = st.selectbox("Selecione o Mês para Filtrar a Tabela de Produtos:", meses_unicos)
+            # Seletor compacto (Com opção 'Todos os Meses')
+            col_filtro, col_vazia = st.columns([1, 2])
+            with col_filtro:
+                opcoes_meses = ["Todos os Meses"] + [m for m in ["Setembro", "Outubro", "Novembro", "Dezembro"] if m in df_v_glob['Mes'].unique()]
+                mes_analytics_sel = st.selectbox("Filtrar Período do Relatório:", opcoes_meses, index=0)
 
-            df_v_mes_sel = df_v_glob[df_v_glob['Mes'] == mes_analytics_sel]
+            if mes_analytics_sel == "Todos os Meses":
+                df_v_mes_sel = df_v_glob.copy()
+                df_p_mes_sel = df_p_glob.copy()
+            else:
+                df_v_mes_sel = df_v_glob[df_v_glob['Mes'] == mes_analytics_sel]
+                df_p_mes_sel = df_p_glob[df_p_glob['Mes'] == mes_analytics_sel]
 
             if df_v_mes_sel.empty:
-                st.info(f"Nenhum registro de produto encontrado para o mês de {mes_analytics_sel}.")
+                st.info("Nenhum registro encontrado para a seleção.")
             else:
-                prod_pivot = df_v_mes_sel.groupby(['descricao', 'Concessionaria'])['qtde'].sum().unstack().fillna(0).astype(int)
-                prod_pivot['TOTAL GERAL'] = prod_pivot.sum(axis=1)
-                prod_pivot = prod_pivot.sort_values('TOTAL GERAL', ascending=False).reset_index()
-                prod_pivot.rename(columns={'descricao': 'Descrição do Produto'}, inplace=True)
+                # Construção estruturada da Tabela
+                analytics_table_rows = []
+                
+                # Totais de Vendas por Loja e Produto
+                for prod_cod, desc in PRODUCT_CATALOG:
+                    sku_alvo = PRODUCT_MAP.get(prod_cod, {}).get('sku')
+                    row_dict = {'Código': prod_cod, 'Descrição': desc}
+                    
+                    soma_linha = 0
+                    for loja in LOJAS_PADRAO_ORDEM:
+                        qtd = df_v_mes_sel[(df_v_mes_sel['Concessionaria'] == loja) & ((df_v_mes_sel['prod_ref'] == prod_cod) | (df_v_mes_sel['sku'] == sku_alvo))]['qtde'].sum()
+                        qtd = int(qtd) if not np.isnan(qtd) else 0
+                        row_dict[loja] = str(qtd) if qtd > 0 else ""
+                        soma_linha += qtd
+                    
+                    row_dict['Total'] = str(soma_linha)
+                    analytics_table_rows.append(row_dict)
+
+                # Linhas de Totais de Rodapé
+                tot_vol_row = {'Código': 'SOMA VOLUME', 'Descrição': 'Total de Latas'}
+                pass_row = {'Código': 'PASSAGENS CSP', 'Descrição': 'Atendimentos OS'}
+                conv_row = {'Código': 'TAXA CONVERSÃO', 'Descrição': 'Latas / OS'}
+
+                soma_geral_vol = 0
+                soma_geral_pass = 0
+
+                for loja in LOJAS_PADRAO_ORDEM:
+                    tot_v_loja = int(df_v_mes_sel[df_v_mes_sel['Concessionaria'] == loja]['qtde'].sum())
+                    tot_p_loja = int(df_p_mes_sel[df_p_mes_sel['Concessionaria'] == loja]['os_numero'].nunique())
+                    conv_loja = round(tot_v_loja / tot_p_loja, 2) if tot_p_loja > 0 else 0.0
+
+                    soma_geral_vol += tot_v_loja
+                    soma_geral_pass += tot_p_loja
+
+                    tot_vol_row[loja] = str(tot_v_loja)
+                    pass_row[loja] = str(tot_p_loja)
+                    conv_row[loja] = f"{conv_loja:.2f}"
+
+                conv_geral_rede = round(soma_geral_vol / soma_geral_pass, 2) if soma_geral_pass > 0 else 0.0
+
+                tot_vol_row['Total'] = str(soma_geral_vol)
+                pass_row['Total'] = str(soma_geral_pass)
+                conv_row['Total'] = f"{conv_geral_rede:.2f}"
+
+                analytics_table_rows.extend([tot_vol_row, pass_row, conv_row])
+                df_analytics_final = pd.DataFrame(analytics_table_rows)
 
                 st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
-                st.markdown(prod_pivot.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
+                st.markdown(df_analytics_final.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
