@@ -37,6 +37,14 @@ st.markdown("""
         color: #1F2937 !important;
     }
     
+    /* Ajuste de proporção para a imagem no menu lateral */
+    [data-testid="stSidebar"] img {
+        max-width: 180px !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+    
     /* Bordas aparentes nos dropdowns / selectbox */
     div[data-baseweb="select"] > div {
         border: 1.5px solid #CBD5E1 !important;
@@ -73,7 +81,7 @@ st.markdown("""
         transition: background-color 0.2s ease;
     }
     table.custom-table tr:hover td {
-        background-color: #E0F2FE !important; /* Destaque ao passar o mouse */
+        background-color: #E0F2FE !important;
         font-weight: 600;
     }
     
@@ -338,16 +346,15 @@ def abrir_modal_consultor(short_n, mes_sel, loja_formatada, tot_latas_c, tot_os_
 # -----------------------------------------------------------------------------
 # Barra Lateral (Sidebar)
 # -----------------------------------------------------------------------------
-# 1. Logotipo TUNAP no topo
-LOGOTIPO_URL = "https://lh3.googleusercontent.com/d/1d2F_6boMmZx4G9ti3vf9C0izJjGIU0Ox=s400"
-st.sidebar.image(LOGOTIPO_URL, use_container_width=True)
+# Logotipo TUNAP com Proporção Otimizada
+LOGOTIPO_URL = "https://lh3.googleusercontent.com/d/1ONAL_dfLAPxpQKxaynprv24hf2vx2Yde=s400"
+st.sidebar.image(LOGOTIPO_URL, width=180)
 st.sidebar.markdown("---")
 
 df_vendas_init, df_pass_init = load_data_from_db()
 
 if not df_vendas_init.empty and 'empresa' in df_vendas_init.columns:
     lojas_brutas = sorted(df_vendas_init['empresa'].unique().tolist())
-    # Exibe apenas o nome resumido (entre parênteses)
     lojas_map = {format_loja_name(l): l for l in lojas_brutas}
     lojas_display = sorted(list(lojas_map.keys()))
     
@@ -435,7 +442,6 @@ else:
 # -----------------------------------------------------------------------------
 st.title("🚗 TUNAP | Campanha Mercosul")
 
-# Subtítulo Informativo com Loja e Período
 st.markdown(f"""
     <div class="header-subtitle">
         📍 Concessionária: <b>{loja_display_sel}</b> &nbsp;|&nbsp; 📅 Período: <b>{mes_sel}/2026</b>
@@ -450,7 +456,7 @@ else:
     v_filtered = df_vendas[(df_vendas['empresa'] == loja_sel) & (df_vendas['data_venda'].str[3:5] == num_mes)] if not df_vendas.empty else pd.DataFrame()
     p_filtered = df_pass[(df_pass['empresa'] == loja_sel) & (df_pass['data_passagem'].str[3:5] == num_mes)] if not df_pass.empty else pd.DataFrame()
 
-    tab1, tab2, tab3, tab4 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerencial", "📈 Analytics"])
+    tab1, tab2, tab3, tab4 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerencial", "📈 Analytics Global"])
 
     # --- ABA 1: CONSULTORES ---
     with tab1:
@@ -471,7 +477,6 @@ else:
         if not filtered_consultants:
             st.info("Nenhum consultor atingiu o volume mínimo de 10 latas no período.")
         else:
-            # Botões para acionar o Pop-up de Análise do Consultor no topo da tabela
             st.write("🔍 **Clique para abrir a análise conversacional do consultor:**")
             cols_pop = st.columns(min(len(filtered_consultants), 6))
             for idx, c in enumerate(filtered_consultants):
@@ -654,48 +659,62 @@ else:
             st.markdown(df_gerencial_global.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- ABA 4: ANALYTICS & RESULTADOS DA CAMPANHA ---
+    # --- ABA 4: ANALYTICS GLOBAL (Sem Filtro dos Dropdowns Laterais) ---
     with tab4:
-        st.subheader("📈 Relatório Visual de Desempenho e Resultados")
-        st.write("Análise gráfica mês a mês para acompanhamento de tendências da campanha:")
+        st.subheader("📈 Analytics & Desempenho Global da Campanha")
+        st.caption("Visão executiva completa da rede (não influenciada pelos filtros laterais)")
 
-        # Tratamento de dados temporais
-        df_v_analytics = df_vendas[df_vendas['empresa'] == loja_sel].copy() if not df_vendas.empty else pd.DataFrame()
-        df_p_analytics = df_pass[df_pass['empresa'] == loja_sel].copy() if not df_pass.empty else pd.DataFrame()
-
-        if df_v_analytics.empty:
-            st.info("Sem dados suficientes da concessionária para gerar gráficos.")
+        if df_vendas.empty or df_pass.empty:
+            st.info("Sem dados cadastrados no banco para exibir análises globais.")
         else:
-            df_v_analytics['mes'] = df_v_analytics['data_venda'].str[3:5]
-            df_p_analytics['mes'] = df_p_analytics['data_passagem'].str[3:5]
+            df_v_glob = df_vendas.copy()
+            df_p_glob = df_pass.copy()
 
-            meses_map_inv = {"09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"}
-            
-            # Groupbys por Mês
-            v_por_mes = df_v_analytics.groupby('mes')['qtde'].sum().reset_index()
-            p_por_mes = df_p_analytics.groupby('mes')['os_numero'].nunique().reset_index()
+            df_v_glob['mes_num'] = df_v_glob['data_venda'].str[3:5]
+            df_p_glob['mes_num'] = df_p_glob['data_passagem'].str[3:5]
 
-            df_evolucao = pd.merge(v_por_mes, p_por_mes, on='mes', how='outer').fillna(0)
-            df_evolucao['Nome_Mes'] = df_evolucao['mes'].map(meses_map_inv)
-            df_evolucao['Conversao'] = np.where(df_evolucao['os_numero'] > 0, (df_evolucao['qtde'] / df_evolucao['os_numero']).round(2), 0)
-            df_evolucao = df_evolucao.sort_values('mes')
+            meses_map_analytics = {"09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"}
+            df_v_glob['Mes'] = df_v_glob['mes_num'].map(meses_map_analytics)
+            df_p_glob['Mes'] = df_p_glob['mes_num'].map(meses_map_analytics)
 
-            # Gráficos em colunas
-            c_g1, c_g2 = st.columns(2)
+            df_v_glob['Concessionaria'] = df_v_glob['empresa'].apply(format_loja_name)
+            df_p_glob['Concessionaria'] = df_p_glob['empresa'].apply(format_loja_name)
 
-            with c_g1:
-                st.markdown("#### 📦 Volume de Latas Vendidas (Mês a Mês)")
-                st.bar_chart(data=df_evolucao, x="Nome_Mes", y="qtde", color="#2563EB", use_container_width=True)
+            col_a1, col_a2 = st.columns(2)
 
-            with c_g2:
-                st.markdown("#### 🎯 Taxa de Conversão vs Meta (Mês a Mês)")
-                st.line_chart(data=df_evolucao, x="Nome_Mes", y="Conversao", color="#059669", use_container_width=True)
+            with col_a1:
+                st.markdown("#### 📦 Volume de Latas por Concessionária (Mês a Mês)")
+                v_pivot = df_v_glob.groupby(['Mes', 'Concessionaria'])['qtde'].sum().unstack().fillna(0)
+                st.line_chart(v_pivot, use_container_width=True)
+
+            with col_a2:
+                st.markdown("#### 🎯 Taxa de Conversão por Concessionária (Mês a Mês)")
+                v_grp = df_v_glob.groupby(['Mes', 'Concessionaria'])['qtde'].sum().reset_index()
+                p_grp = df_p_glob.groupby(['Mes', 'Concessionaria'])['os_numero'].nunique().reset_index()
+                
+                df_conv_glob = pd.merge(v_grp, p_grp, on=['Mes', 'Concessionaria'], how='inner')
+                df_conv_glob['Conversao'] = (df_conv_glob['qtde'] / df_conv_glob['os_numero']).round(2)
+                
+                conv_pivot = df_conv_glob.pivot(index='Mes', columns='Concessionaria', values='Conversao').fillna(0)
+                st.line_chart(conv_pivot, use_container_width=True)
 
             st.markdown("---")
-            st.markdown("#### 🛍️ Participação por Linha de Produto (SKUs)")
-            
-            # Análise por Produto
-            prod_vendas = df_v_analytics.groupby('descricao')['qtde'].sum().reset_index()
-            prod_vendas = prod_vendas.sort_values('qtde', ascending=False)
+            st.subheader("🛍️ Desempenho de Produtos por Concessionária")
 
-            st.bar_chart(data=prod_vendas, x="descricao", y="qtde", color="#D97706", use_container_width=True)
+            # Filtro exclusivo de período para a tabela de produtos
+            meses_unicos = sorted([m for m in df_v_glob['Mes'].dropna().unique() if m in meses_map_analytics.values()])
+            mes_analytics_sel = st.selectbox("Selecione o Mês para Filtrar a Tabela de Produtos:", meses_unicos)
+
+            df_v_mes_sel = df_v_glob[df_v_glob['Mes'] == mes_analytics_sel]
+
+            if df_v_mes_sel.empty:
+                st.info(f"Nenhum registro de produto encontrado para o mês de {mes_analytics_sel}.")
+            else:
+                prod_pivot = df_v_mes_sel.groupby(['descricao', 'Concessionaria'])['qtde'].sum().unstack().fillna(0).astype(int)
+                prod_pivot['TOTAL GERAL'] = prod_pivot.sum(axis=1)
+                prod_pivot = prod_pivot.sort_values('TOTAL GERAL', ascending=False).reset_index()
+                prod_pivot.rename(columns={'descricao': 'Descrição do Produto'}, inplace=True)
+
+                st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
+                st.markdown(prod_pivot.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
