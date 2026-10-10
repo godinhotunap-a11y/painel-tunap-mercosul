@@ -36,12 +36,13 @@ st.markdown("""
         color: #1F2937 !important;
     }
 
-  [data-testid="stSidebar"] [data-testid="stImage"] {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    width: 100% !important;
-}    
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+    
     [data-testid="stSidebar"] img {
         max-width: 80px !important;
         height: auto !important;
@@ -115,7 +116,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Funções de Banco de Dados
+# Funções de Banco de Dados com Paginação Otimizada
 # -----------------------------------------------------------------------------
 def clear_database():
     try:
@@ -127,10 +128,44 @@ def clear_database():
         st.error(f"Erro ao limpar banco: {e}")
         return False
 
+def load_data_from_db():
+    """Carrega todas as vendas e passagens do Supabase usando paginação em lotes de 1000."""
+    try:
+        # Paginação para a tabela de Vendas
+        all_vendas = []
+        batch_size = 1000
+        offset = 0
+        while True:
+            res_v = supabase.table("vendas").select("*").range(offset, offset + batch_size - 1).execute()
+            data_v = res_v.data if res_v.data else []
+            all_vendas.extend(data_v)
+            if len(data_v) < batch_size:
+                break
+            offset += batch_size
+
+        df_vendas = pd.DataFrame(all_vendas) if all_vendas else pd.DataFrame(columns=['id', 'empresa', 'consultor', 'nf_numero', 'nf_item_cod', 'prod_ref', 'sku', 'descricao', 'qtde', 'data_venda'])
+
+        # Paginação para a tabela de Passagens
+        all_pass = []
+        offset = 0
+        while True:
+            res_p = supabase.table("passagens").select("*").range(offset, offset + batch_size - 1).execute()
+            data_p = res_p.data if res_p.data else []
+            all_pass.extend(data_p)
+            if len(data_p) < batch_size:
+                break
+            offset += batch_size
+
+        df_pass = pd.DataFrame(all_pass) if all_pass else pd.DataFrame(columns=['id', 'empresa', 'consultor', 'os_codigo', 'os_numero', 'data_passagem'])
+
+        return df_vendas, df_pass
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do Supabase: {e}")
+        return pd.DataFrame(), pd.DataFrame()
+
 def get_db_status():
     try:
-        res_v = supabase.table("vendas").select("data_venda").execute()
-        df_v = pd.DataFrame(res_v.data) if res_v.data else pd.DataFrame()
+        df_v, df_p = load_data_from_db()
         min_v, max_v = "N/A", "N/A"
         if not df_v.empty and 'data_venda' in df_v.columns:
             valid_v = pd.to_datetime(df_v['data_venda'], format='%d/%m/%Y', errors='coerce').dropna()
@@ -138,8 +173,6 @@ def get_db_status():
                 min_v = valid_v.min().strftime('%d/%m/%Y')
                 max_v = valid_v.max().strftime('%d/%m/%Y')
 
-        res_p = supabase.table("passagens").select("data_passagem").execute()
-        df_p = pd.DataFrame(res_p.data) if res_p.data else pd.DataFrame()
         min_p, max_p = "N/A", "N/A"
         if not df_p.empty and 'data_passagem' in df_p.columns:
             valid_p = pd.to_datetime(df_p['data_passagem'], format='%d/%m/%Y', errors='coerce').dropna()
@@ -317,19 +350,6 @@ def save_to_database(file_pass, file_vend):
     agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     supabase.table("uploads_log").insert({"arquivo_tipo": "Vendas & Passagens", "data_upload": agora}).execute()
 
-def load_data_from_db():
-    try:
-        res_v = supabase.table("vendas").select("*").execute()
-        df_vendas = pd.DataFrame(res_v.data) if res_v.data else pd.DataFrame(columns=['id', 'empresa', 'consultor', 'nf_numero', 'nf_item_cod', 'prod_ref', 'sku', 'descricao', 'qtde', 'data_venda'])
-
-        res_p = supabase.table("passagens").select("*").execute()
-        df_pass = pd.DataFrame(res_p.data) if res_p.data else pd.DataFrame(columns=['id', 'empresa', 'consultor', 'os_codigo', 'os_numero', 'data_passagem'])
-
-        return df_vendas, df_pass
-    except Exception as e:
-        st.error(f"Erro ao carregar dados do Supabase: {e}")
-        return pd.DataFrame(), pd.DataFrame()
-
 # Pop-up / Modal de Análise do Consultor
 @st.dialog("Análise do Consultor")
 def abrir_modal_consultor(short_n, mes_sel, loja_formatada, tot_latas_c, tot_os_c, conv_c, produtos_nao_vendidos_lista):
@@ -370,10 +390,10 @@ st.sidebar.image(
 )
 st.sidebar.markdown("---")
 
-df_vendas_init, df_pass_init = load_data_from_db()
+df_vendas, df_pass = load_data_from_db()
 
-if not df_vendas_init.empty and 'empresa' in df_vendas_init.columns:
-    lojas_brutas = sorted(df_vendas_init['empresa'].unique().tolist())
+if not df_vendas.empty and 'empresa' in df_vendas.columns:
+    lojas_brutas = sorted(df_vendas['empresa'].unique().tolist())
     lojas_map = {format_loja_name(l): l for l in lojas_brutas}
     lojas_display = sorted(list(lojas_map.keys()))
     
@@ -467,8 +487,6 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-df_vendas, df_pass = load_data_from_db()
-
 if df_vendas.empty:
     st.warning("⚠️ O banco de dados no Supabase não possui registros. Faça o upload dos relatórios na barra lateral.")
 else:
@@ -482,7 +500,6 @@ else:
     with tab1:
         st.subheader("Vendas por Consultor")
         
-        # REMOVIDO O FILTRO DE MÍNIMO DE LATAS/PASSAGENS (Pega TODOS os consultores registrados no período)
         all_consultants = sorted(list(set(p_filtered['consultor'].dropna().tolist() + v_filtered['consultor'].dropna().tolist()))) if not v_filtered.empty or not p_filtered.empty else []
         filtered_consultants = []
         consultant_display_map = {}
