@@ -35,18 +35,19 @@ st.markdown("""
         background-color: #FFFFFF !important;
         color: #1F2937 !important;
     }
-    
+
+  [data-testid="stSidebar"] [data-testid="stImage"] {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+}    
     [data-testid="stSidebar"] img {
-        max-width: 170px !important;
+        max-width: 120px !important;
         height: auto !important;
         margin: 0 auto !important;
         display: block !important;
-    }
-    
-    /* Container compacto para o filtro do Analytics */
-    .compact-select {
-        max-width: 280px;
-        margin-bottom: 15px;
+        object-fit: contain !important;
     }
     
     div[data-baseweb="select"] > div {
@@ -87,7 +88,6 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* Formatação de texto sem rolagem horizontal no popup */
     .wpp-box {
         background-color: #F8FAFC;
         border: 1px solid #CBD5E1;
@@ -364,7 +364,7 @@ def abrir_modal_consultor(short_n, mes_sel, loja_formatada, tot_latas_c, tot_os_
 # Barra Lateral
 # -----------------------------------------------------------------------------
 LOGOTIPO_URL = "https://lh3.googleusercontent.com/d/1ONAL_dfLAPxpQKxaynprv24hf2vx2Yde=s400"
-st.sidebar.image(LOGOTIPO_URL, width=170)
+st.sidebar.image(LOGOTIPO_URL, width=120)
 st.sidebar.markdown("---")
 
 df_vendas_init, df_pass_init = load_data_from_db()
@@ -469,8 +469,9 @@ df_vendas, df_pass = load_data_from_db()
 if df_vendas.empty:
     st.warning("⚠️ O banco de dados no Supabase não possui registros. Faça o upload dos relatórios na barra lateral.")
 else:
-    v_filtered = df_vendas[(df_vendas['empresa'] == loja_sel) & (df_vendas['data_venda'].str[3:5] == num_mes)] if not df_vendas.empty else pd.DataFrame()
-    p_filtered = df_pass[(df_pass['empresa'] == loja_sel) & (df_pass['data_passagem'].str[3:5] == num_mes)] if not df_pass.empty else pd.DataFrame()
+    # Filtra dados garantindo correspondência insensível a maiúsculas
+    v_filtered = df_vendas[(df_vendas['empresa'].astype(str).str.upper() == str(loja_sel).upper()) & (df_vendas['data_venda'].str[3:5] == num_mes)] if not df_vendas.empty else pd.DataFrame()
+    p_filtered = df_pass[(df_pass['empresa'].astype(str).str.upper() == str(loja_sel).upper()) & (df_pass['data_passagem'].str[3:5] == num_mes)] if not df_pass.empty else pd.DataFrame()
 
     tab1, tab2, tab3, tab4 = st.tabs(["👤 Consultores", "🛠️ Técnico", "📊 Gerencial", "📈 Analytics Global"])
 
@@ -478,22 +479,19 @@ else:
     with tab1:
         st.subheader("Vendas por Consultor")
         
-        all_consultants = sorted(list(set(p_filtered['consultor'].tolist() + v_filtered['consultor'].tolist()))) if not v_filtered.empty else []
+        # REMOVIDO O FILTRO DE MÍNIMO DE LATAS/PASSAGENS (Pega TODOS os consultores registrados no período)
+        all_consultants = sorted(list(set(p_filtered['consultor'].dropna().tolist() + v_filtered['consultor'].dropna().tolist()))) if not v_filtered.empty or not p_filtered.empty else []
         filtered_consultants = []
         consultant_display_map = {}
 
         for c in all_consultants:
-            tot_v = v_filtered[v_filtered['consultor'] == c]['qtde'].sum()
-            tot_p = p_filtered[p_filtered['consultor'] == c]['os_numero'].nunique()
-            if tot_v >= 10 and tot_p > 0:
-                short_name = format_short_name(c)
-                filtered_consultants.append(c)
-                consultant_display_map[c] = short_name
+            short_name = format_short_name(c)
+            filtered_consultants.append(c)
+            consultant_display_map[c] = short_name
 
         if not filtered_consultants:
-            st.info("Nenhum consultor atingiu o volume mínimo de 10 latas no período.")
+            st.info("Nenhum consultor registrado para esta concessionária no período selecionado.")
         else:
-            # Lista de atalhos em botões compactos na mesma linha
             st.write("📊 **Clique no botão do consultor para abrir a análise:**")
             cols_consultores_btns = st.columns(min(len(filtered_consultants), 6))
             for idx, c in enumerate(filtered_consultants):
@@ -696,7 +694,6 @@ else:
             df_v_glob['Concessionaria'] = df_v_glob['empresa'].apply(format_loja_name)
             df_p_glob['Concessionaria'] = df_p_glob['empresa'].apply(format_loja_name)
 
-            # Gráficos Evolutivos
             col_a1, col_a2 = st.columns(2)
 
             with col_a1:
@@ -718,7 +715,6 @@ else:
             st.markdown("---")
             st.subheader("📊 Tabela Geral por Produto e Concessionária")
 
-            # Seletor compacto (Com opção 'Todos os Meses')
             col_filtro, col_vazia = st.columns([1, 2])
             with col_filtro:
                 opcoes_meses = ["Todos os Meses"] + [m for m in ["Setembro", "Outubro", "Novembro", "Dezembro"] if m in df_v_glob['Mes'].unique()]
@@ -734,17 +730,15 @@ else:
             if df_v_mes_sel.empty:
                 st.info("Nenhum registro encontrado para a seleção.")
             else:
-                # Construção estruturada da Tabela
                 analytics_table_rows = []
                 
-                # Totais de Vendas por Loja e Produto
                 for prod_cod, desc in PRODUCT_CATALOG:
                     sku_alvo = PRODUCT_MAP.get(prod_cod, {}).get('sku')
                     row_dict = {'Código': prod_cod, 'Descrição': desc}
                     
                     soma_linha = 0
                     for loja in LOJAS_PADRAO_ORDEM:
-                        qtd = df_v_mes_sel[(df_v_mes_sel['Concessionaria'] == loja) & ((df_v_mes_sel['prod_ref'] == prod_cod) | (df_v_mes_sel['sku'] == sku_alvo))]['qtde'].sum()
+                        qtd = df_v_mes_sel[(df_v_mes_sel['Concessionaria'].str.upper() == loja.upper()) & ((df_v_mes_sel['prod_ref'] == prod_cod) | (df_v_mes_sel['sku'] == sku_alvo))]['qtde'].sum()
                         qtd = int(qtd) if not np.isnan(qtd) else 0
                         row_dict[loja] = str(qtd) if qtd > 0 else ""
                         soma_linha += qtd
@@ -752,7 +746,6 @@ else:
                     row_dict['Total'] = str(soma_linha)
                     analytics_table_rows.append(row_dict)
 
-                # Linhas de Totais de Rodapé
                 tot_vol_row = {'Código': 'SOMA VOLUME', 'Descrição': 'Total de Latas'}
                 pass_row = {'Código': 'PASSAGENS CSP', 'Descrição': 'Atendimentos OS'}
                 conv_row = {'Código': 'TAXA CONVERSÃO', 'Descrição': 'Latas / OS'}
@@ -761,8 +754,8 @@ else:
                 soma_geral_pass = 0
 
                 for loja in LOJAS_PADRAO_ORDEM:
-                    tot_v_loja = int(df_v_mes_sel[df_v_mes_sel['Concessionaria'] == loja]['qtde'].sum())
-                    tot_p_loja = int(df_p_mes_sel[df_p_mes_sel['Concessionaria'] == loja]['os_numero'].nunique())
+                    tot_v_loja = int(df_v_mes_sel[df_v_mes_sel['Concessionaria'].str.upper() == loja.upper()]['qtde'].sum())
+                    tot_p_loja = int(df_p_mes_sel[df_p_mes_sel['Concessionaria'].str.upper() == loja.upper()]['os_numero'].nunique())
                     conv_loja = round(tot_v_loja / tot_p_loja, 2) if tot_p_loja > 0 else 0.0
 
                     soma_geral_vol += tot_v_loja
