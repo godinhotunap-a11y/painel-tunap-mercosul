@@ -43,7 +43,7 @@ st.markdown("""
     width: 100% !important;
 }    
     [data-testid="stSidebar"] img {
-        max-width: 120px !important;
+        max-width: 80px !important;
         height: auto !important;
         margin: 0 auto !important;
         display: block !important;
