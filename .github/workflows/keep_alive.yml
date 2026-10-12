@@ -1,0 +1,21 @@
+name: Manter Streamlit Acordado
+
+on:
+  schedule:
+    # Executa a cada 6 horas automaticamente
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  keep_alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Enviar commit vazio para resetar o temporizador do Streamlit
+        run: |
+          git config --global user.email "bot@github.com"
+          git config --global user.name "KeepAlive Bot"
+          git commit --allow-empty -m "Chore: Manter Streamlit ativo"
+          git push
