@@ -28,7 +28,6 @@ supabase = init_supabase()
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Estilização universal para tabelas e containers mantendo compatibilidade de temas */
     .table-responsive {
         width: 100%;
         overflow-x: auto;
@@ -149,61 +148,69 @@ def get_db_status():
         return "N/A", "N/A", "N/A", "N/A", "Nenhum upload"
 
 # -----------------------------------------------------------------------------
-# Dicionários e Mapeamentos com Categorias (OURO, PRATA, BRONZE)
+# Dicionários e Mapeamentos com Categorias (DIAMANTE, OURO, PRATA, BRONZE)
 # -----------------------------------------------------------------------------
 PRODUCT_MAP = {
-    'CARE0 40001': {'desc': 'Espuma Limpeza', 'sku': '109', 'grupo': 'OURO', 'icone': '🥇'},
-    'TU109': {'desc': 'Espuma Limpeza', 'sku': '109', 'grupo': 'OURO', 'icone': '🥇'},
-    'CARE0 40102': {'desc': 'Lubrificante Teflon', 'sku': '104', 'grupo': 'PRATA', 'icone': '🥈'},
-    'TU104': {'desc': 'Lubrificante Teflon', 'sku': '104', 'grupo': 'PRATA', 'icone': '🥈'},
-    'CARE0 40201': {'desc': 'Desengraxante Universal', 'sku': '115', 'grupo': 'BRONZE', 'icone': '🥉'},
-    'TU115': {'desc': 'Desengraxante Universal', 'sku': '115', 'grupo': 'BRONZE', 'icone': '🥉'},
-    'CARE0 40501': {'desc': 'Limpeza Preventiva DPF', 'sku': '126', 'grupo': 'PRATA', 'icone': '🥈'},
-    'TU126': {'desc': 'Limpeza Preventiva DPF', 'sku': '126', 'grupo': 'PRATA', 'icone': '🥈'},
-    'CARE0 40701': {'desc': 'Evaporador', 'sku': '994', 'grupo': 'OURO', 'icone': '🥇'},
+    'CARE0 40001': {'desc': 'Espuma Limpeza', 'sku': '109', 'grupo': 'PRATA', 'icone': '🥈'},
+    'TU109': {'desc': 'Espuma Limpeza', 'sku': '109', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 40102': {'desc': 'Lubrificante Teflon', 'sku': '104', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU104': {'desc': 'Lubrificante Teflon', 'sku': '104', 'grupo': 'OURO', 'icone': '🥇'},
+    'CARE0 40201': {'desc': 'Desengraxante Universal', 'sku': '115', 'grupo': 'PRATA', 'icone': '🥈'},
+    'TU115': {'desc': 'Desengraxante Universal', 'sku': '115', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 40501': {'desc': 'Limpeza Preventiva DPF', 'sku': '126', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU126': {'desc': 'Limpeza Preventiva DPF', 'sku': '126', 'grupo': 'OURO', 'icone': '🥇'},
+    'CARE0 40701': {'desc': 'Evaporador', 'sku': '994', 'grupo': 'DIAMANTE', 'icone': '💎'},
     'CARE0 40702': {'desc': 'Sanitizador AC', 'sku': '996', 'grupo': 'OURO', 'icone': '🥇'},
     'TU996': {'desc': 'Sanitizador AC', 'sku': '996', 'grupo': 'OURO', 'icone': '🥇'},
     'CARE0 40703': {'desc': 'Odorizante', 'sku': '599', 'grupo': 'PRATA', 'icone': '🥈'},
     'TU599': {'desc': 'Odorizante', 'sku': '599', 'grupo': 'PRATA', 'icone': '🥈'},
-    'CARE0 42501': {'desc': 'Tratamento FLEX', 'sku': '939', 'grupo': 'BRONZE', 'icone': '🥉'},
-    'CARE0 42502': {'desc': 'Tratamento DIESEL', 'sku': '984', 'grupo': 'BRONZE', 'icone': '🥉'},
-    'CARE0 43501': {'desc': 'Limp. Interna Motor', 'sku': '957', 'grupo': 'BRONZE', 'icone': '🥉'},
-    'CARE0 44902': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299', 'grupo': 'PRATA', 'icone': '🥈'},
-    'TU299': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 42501': {'desc': 'Tratamento FLEX', 'sku': '939', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 42502': {'desc': 'Tratamento DIESEL', 'sku': '984', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 43501': {'desc': 'Limp. Interna Motor', 'sku': '957', 'grupo': 'OURO', 'icone': '🥇'},
+    'CARE0 44902': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU299': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299', 'grupo': 'OURO', 'icone': '🥇'},
     'CARE0 44904': {'desc': 'Kit Lubrificação', 'sku': '2000', 'grupo': 'BRONZE', 'icone': '🥉'},
-    'CARE0 44905': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'PRATA', 'icone': '🥈'},
-    'TU047658': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'PRATA', 'icone': '🥈'},
-    '047658': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 44905': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'DIAMANTE', 'icone': '💎'},
+    'TU047658': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'DIAMANTE', 'icone': '💎'},
+    '047658': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'DIAMANTE', 'icone': '💎'},
     'CARE044907': {'desc': 'Limpa Para-brisa', 'sku': '724', 'grupo': 'BRONZE', 'icone': '🥉'},
-    'TU127': {'desc': 'Limpeza Injetores DIESEL', 'sku': '127', 'grupo': 'OURO', 'icone': '🥇'},
-    'TU137': {'desc': 'Limpeza Injetores FLEX', 'sku': '137', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU127': {'desc': 'Limpeza Injetores DIESEL', 'sku': '127', 'grupo': 'DIAMANTE', 'icone': '💎'},
+    'TU137': {'desc': 'Limpeza Injetores FLEX', 'sku': '137', 'grupo': 'DIAMANTE', 'icone': '💎'},
     'TU987': {'desc': 'Agente do Sistema SCR ARLA32', 'sku': '987', 'grupo': 'OURO', 'icone': '🥇'},
     'TUN987': {'desc': 'Agente do Sistema SCR ARLA32', 'sku': '987', 'grupo': 'OURO', 'icone': '🥇'},
-    'TU931': {'desc': 'Limpeza Corretiva DPF 931', 'sku': '931', 'grupo': 'OURO', 'icone': '🥇'},
-    'TU932': {'desc': 'Limpeza Corretiva DPF 932', 'sku': '932', 'grupo': 'OURO', 'icone': '🥇'}
+    'TU931': {'desc': 'Limpeza Corretiva DPF 931', 'sku': '931', 'grupo': 'DIAMANTE', 'icone': '💎'},
+    'TU932': {'desc': 'Limpeza Corretiva DPF 932', 'sku': '932', 'grupo': 'DIAMANTE', 'icone': '💎'}
 }
 
-PRODUCT_CATALOG = [
-    ('CARE0 40001', 'Espuma Limpeza', 'OURO', '🥇'),
-    ('CARE0 40102', 'Lubrificante Teflon', 'PRATA', '🥈'),
-    ('CARE0 40201', 'Desengraxante Universal', 'BRONZE', '🥉'),
-    ('CARE0 40501', 'Limpeza Preventiva DPF', 'PRATA', '🥈'),
-    ('CARE0 40701', 'Evaporador', 'OURO', '🥇'),
+# Catálogo Base Atualizado
+RAW_CATALOG = [
+    ('CARE0 40001', 'Espuma Limpeza', 'PRATA', '🥈'),
+    ('CARE0 40102', 'Lubrificante Teflon', 'OURO', '🥇'),
+    ('CARE0 40201', 'Desengraxante Universal', 'PRATA', '🥈'),
+    ('CARE0 40501', 'Limpeza Preventiva DPF', 'OURO', '🥇'),
+    ('CARE0 40701', 'Evaporador', 'DIAMANTE', '💎'),
     ('CARE0 40702', 'Sanitizador AC', 'OURO', '🥇'),
     ('CARE0 40703', 'Odorizante', 'PRATA', '🥈'),
-    ('CARE0 42501', 'Tratamento FLEX', 'BRONZE', '🥉'),
-    ('CARE0 42502', 'Tratamento DIESEL', 'BRONZE', '🥉'),
-    ('CARE0 43501', 'Limp. Interna Motor', 'BRONZE', '🥉'),
-    ('CARE0 44902', 'Lubrificação Feixe de Molas', 'PRATA', '🥈'),
+    ('CARE0 42501', 'Tratamento FLEX', 'PRATA', '🥈'),
+    ('CARE0 42502', 'Tratamento DIESEL', 'PRATA', '🥈'),
+    ('CARE0 43501', 'Limp. Interna Motor', 'OURO', '🥇'),
+    ('CARE0 44902', 'Lubrificação Feixe de Molas', 'OURO', '🥇'),
     ('CARE0 44904', 'Kit Lubrificação', 'BRONZE', '🥉'),
-    ('CARE0 44905', 'Veda Pneu', 'PRATA', '🥈'),
+    ('CARE0 44905', 'Veda Pneu', 'DIAMANTE', '💎'),
     ('CARE044907', 'Limpa Para-brisa', 'BRONZE', '🥉'),
-    ('TU127', 'Limpeza Injetores DIESEL', 'OURO', '🥇'),
-    ('TU137', 'Limpeza Injetores FLEX', 'OURO', '🥇'),
-    ('TU931', 'Limpeza Corretiva DPF 931', 'OURO', '🥇'),
-    ('TU932', 'Limpeza Corretiva DPF 932', 'OURO', '🥇'),
+    ('TU127', 'Limpeza Injetores DIESEL', 'DIAMANTE', '💎'),
+    ('TU137', 'Limpeza Injetores FLEX', 'DIAMANTE', '💎'),
+    ('TU931', 'Limpeza Corretiva DPF 931', 'DIAMANTE', '💎'),
+    ('TU932', 'Limpeza Corretiva DPF 932', 'DIAMANTE', '💎'),
     ('TU987', 'Agente do Sistema SCR ARLA32', 'OURO', '🥇')
 ]
+
+# Ordenação: Prioridade (DIAMANTE -> OURO -> PRATA -> BRONZE) e depois Código SKU
+GRUPO_ORDEM = {'DIAMANTE': 1, 'OURO': 2, 'PRATA': 3, 'BRONZE': 4}
+PRODUCT_CATALOG = sorted(
+    RAW_CATALOG, 
+    key=lambda x: (GRUPO_ORDEM.get(x[2], 99), str(x[0]))
+)
 
 METAS_STAFF = {
     'ARARANGUÁ': {'994': 10, '127': 2, '137': 1, '931': 2, '932': 2},
@@ -563,7 +570,6 @@ else:
             if realizado < meta:
                 todos_skus = False
             
-            # Busca ícone e grupo do SKU
             prod_info = next((item for item in PRODUCT_CATALOG if item[0] == sku or PRODUCT_MAP.get(item[0], {}).get('sku') == sku), None)
             grupo_txt = f"{prod_info[3]} {prod_info[2]}" if prod_info else "-"
 
