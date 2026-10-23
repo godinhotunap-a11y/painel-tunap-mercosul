@@ -24,74 +24,39 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # -----------------------------------------------------------------------------
-# Estilização CSS Customizada (Light Mode Estrito, Hover e Larguras Fixas)
+# Estilização CSS Customizada (Suporte Dinâmico a Light/Dark Mode)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    :root {
-        color-scheme: light !important;
-    }
-    html, body, [data-testid="stAppViewContainer"] {
-        background-color: #FFFFFF !important;
-        color: #1F2937 !important;
-    }
-
-    [data-testid="stSidebar"] [data-testid="stImage"] {
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        width: 100% !important;
-    }
-    
-    [data-testid="stSidebar"] img {
-        max-width: 80px !important;
-        height: auto !important;
-        margin: 0 auto !important;
-        display: block !important;
-        object-fit: contain !important;
-    }
-    
-    div[data-baseweb="select"] > div {
-        border: 1.5px solid #CBD5E1 !important;
-        border-radius: 8px !important;
-        background-color: #F8FAFC !important;
-    }
-    
+    /* Estilização universal para tabelas e containers mantendo compatibilidade de temas */
     .table-responsive {
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         margin-bottom: 1.5rem;
-        border: 1px solid #E2E8F0;
+        border: 1px solid rgba(128, 128, 128, 0.2);
         border-radius: 8px;
     }
     table.custom-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
-        color: #1F2937;
     }
     table.custom-table th {
-        background-color: #F1F5F9;
         font-weight: 700;
-        border: 1px solid #CBD5E1;
+        border: 1px solid rgba(128, 128, 128, 0.3);
         padding: 10px 12px;
         text-align: center;
     }
     table.custom-table td {
-        border: 1px solid #E2E8F0;
+        border: 1px solid rgba(128, 128, 128, 0.2);
         padding: 8px 12px;
         text-align: center;
         transition: background-color 0.2s ease;
     }
-    table.custom-table tr:hover td {
-        background-color: #E0F2FE !important;
-        font-weight: 600;
-    }
     
     .wpp-box {
-        background-color: #F8FAFC;
-        border: 1px solid #CBD5E1;
+        border: 1px solid rgba(128, 128, 128, 0.3);
         border-radius: 8px;
         padding: 12px;
         font-family: monospace;
@@ -99,17 +64,14 @@ st.markdown("""
         white-space: pre-wrap !important;
         word-break: break-word !important;
         overflow-x: hidden !important;
-        color: #0F172A;
     }
 
     .header-subtitle {
-        background-color: #EFF6FF;
         border-left: 4px solid #2563EB;
         padding: 10px 15px;
         border-radius: 4px;
         font-size: 16px;
         font-weight: 600;
-        color: #1E40AF;
         margin-bottom: 20px;
     }
     </style>
@@ -187,60 +149,60 @@ def get_db_status():
         return "N/A", "N/A", "N/A", "N/A", "Nenhum upload"
 
 # -----------------------------------------------------------------------------
-# Dicionários e Mapeamentos
+# Dicionários e Mapeamentos com Categorias (OURO, PRATA, BRONZE)
 # -----------------------------------------------------------------------------
 PRODUCT_MAP = {
-    'CARE0 40001': {'desc': 'Espuma Limpeza', 'sku': '109'},
-    'TU109': {'desc': 'Espuma Limpeza', 'sku': '109'},
-    'CARE0 40102': {'desc': 'Lubrificante Teflon', 'sku': '104'},
-    'TU104': {'desc': 'Lubrificante Teflon', 'sku': '104'},
-    'CARE0 40201': {'desc': 'Desengraxante Universal', 'sku': '115'},
-    'TU115': {'desc': 'Desengraxante Universal', 'sku': '115'},
-    'CARE0 40501': {'desc': 'Limpeza Preventiva DPF', 'sku': '126'},
-    'TU126': {'desc': 'Limpeza Preventiva DPF', 'sku': '126'},
-    'CARE0 40701': {'desc': 'Evaporador', 'sku': '994'},
-    'CARE0 40702': {'desc': 'Sanitizador AC', 'sku': '996'},
-    'TU996': {'desc': 'Sanitizador AC', 'sku': '996'},
-    'CARE0 40703': {'desc': 'Odorizante', 'sku': '599'},
-    'TU599': {'desc': 'Odorizante', 'sku': '599'},
-    'CARE0 42501': {'desc': 'Tratamento FLEX', 'sku': '939'},
-    'CARE0 42502': {'desc': 'Tratamento DIESEL', 'sku': '984'},
-    'CARE0 43501': {'desc': 'Limp. Interna Motor', 'sku': '957'},
-    'CARE0 44902': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299'},
-    'TU299': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299'},
-    'CARE0 44904': {'desc': 'Kit Lubrificação', 'sku': '2000'},
-    'CARE0 44905': {'desc': 'Veda Pneu', 'sku': '711'},
-    'TU047658': {'desc': 'Veda Pneu', 'sku': '711'},
-    '047658': {'desc': 'Veda Pneu', 'sku': '711'},
-    'CARE044907': {'desc': 'Limpa Para-brisa', 'sku': '724'},
-    'TU127': {'desc': 'Limpeza Injetores DIESEL', 'sku': '127'},
-    'TU137': {'desc': 'Limpeza Injetores FLEX', 'sku': '137'},
-    'TU987': {'desc': 'Agente do Sistema SCR ARLA32', 'sku': '987'},
-    'TUN987': {'desc': 'Agente do Sistema SCR ARLA32', 'sku': '987'},
-    'TU931': {'desc': 'Limpeza Corretiva DPF 931', 'sku': '931'},
-    'TU932': {'desc': 'Limpeza Corretiva DPF 932', 'sku': '932'}
+    'CARE0 40001': {'desc': 'Espuma Limpeza', 'sku': '109', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU109': {'desc': 'Espuma Limpeza', 'sku': '109', 'grupo': 'OURO', 'icone': '🥇'},
+    'CARE0 40102': {'desc': 'Lubrificante Teflon', 'sku': '104', 'grupo': 'PRATA', 'icone': '🥈'},
+    'TU104': {'desc': 'Lubrificante Teflon', 'sku': '104', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 40201': {'desc': 'Desengraxante Universal', 'sku': '115', 'grupo': 'BRONZE', 'icone': '🥉'},
+    'TU115': {'desc': 'Desengraxante Universal', 'sku': '115', 'grupo': 'BRONZE', 'icone': '🥉'},
+    'CARE0 40501': {'desc': 'Limpeza Preventiva DPF', 'sku': '126', 'grupo': 'PRATA', 'icone': '🥈'},
+    'TU126': {'desc': 'Limpeza Preventiva DPF', 'sku': '126', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 40701': {'desc': 'Evaporador', 'sku': '994', 'grupo': 'OURO', 'icone': '🥇'},
+    'CARE0 40702': {'desc': 'Sanitizador AC', 'sku': '996', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU996': {'desc': 'Sanitizador AC', 'sku': '996', 'grupo': 'OURO', 'icone': '🥇'},
+    'CARE0 40703': {'desc': 'Odorizante', 'sku': '599', 'grupo': 'PRATA', 'icone': '🥈'},
+    'TU599': {'desc': 'Odorizante', 'sku': '599', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 42501': {'desc': 'Tratamento FLEX', 'sku': '939', 'grupo': 'BRONZE', 'icone': '🥉'},
+    'CARE0 42502': {'desc': 'Tratamento DIESEL', 'sku': '984', 'grupo': 'BRONZE', 'icone': '🥉'},
+    'CARE0 43501': {'desc': 'Limp. Interna Motor', 'sku': '957', 'grupo': 'BRONZE', 'icone': '🥉'},
+    'CARE0 44902': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299', 'grupo': 'PRATA', 'icone': '🥈'},
+    'TU299': {'desc': 'Lubrificação Feixe de Molas', 'sku': '299', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE0 44904': {'desc': 'Kit Lubrificação', 'sku': '2000', 'grupo': 'BRONZE', 'icone': '🥉'},
+    'CARE0 44905': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'PRATA', 'icone': '🥈'},
+    'TU047658': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'PRATA', 'icone': '🥈'},
+    '047658': {'desc': 'Veda Pneu', 'sku': '711', 'grupo': 'PRATA', 'icone': '🥈'},
+    'CARE044907': {'desc': 'Limpa Para-brisa', 'sku': '724', 'grupo': 'BRONZE', 'icone': '🥉'},
+    'TU127': {'desc': 'Limpeza Injetores DIESEL', 'sku': '127', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU137': {'desc': 'Limpeza Injetores FLEX', 'sku': '137', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU987': {'desc': 'Agente do Sistema SCR ARLA32', 'sku': '987', 'grupo': 'OURO', 'icone': '🥇'},
+    'TUN987': {'desc': 'Agente do Sistema SCR ARLA32', 'sku': '987', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU931': {'desc': 'Limpeza Corretiva DPF 931', 'sku': '931', 'grupo': 'OURO', 'icone': '🥇'},
+    'TU932': {'desc': 'Limpeza Corretiva DPF 932', 'sku': '932', 'grupo': 'OURO', 'icone': '🥇'}
 }
 
 PRODUCT_CATALOG = [
-    ('CARE0 40001', 'Espuma Limpeza'),
-    ('CARE0 40102', 'Lubrificante Teflon'),
-    ('CARE0 40201', 'Desengraxante Universal'),
-    ('CARE0 40501', 'Limpeza Preventiva DPF'),
-    ('CARE0 40701', 'Evaporador'),
-    ('CARE0 40702', 'Sanitizador AC'),
-    ('CARE0 40703', 'Odorizante'),
-    ('CARE0 42501', 'Tratamento FLEX'),
-    ('CARE0 42502', 'Tratamento DIESEL'),
-    ('CARE0 43501', 'Limp. Interna Motor'),
-    ('CARE0 44902', 'Lubrificação Feixe de Molas'),
-    ('CARE0 44904', 'Kit Lubrificação'),
-    ('CARE0 44905', 'Veda Pneu'),
-    ('CARE044907', 'Limpa Para-brisa'),
-    ('TU127', 'Limpeza Injetores DIESEL'),
-    ('TU137', 'Limpeza Injetores FLEX'),
-    ('TU931', 'Limpeza Corretiva DPF 931'),
-    ('TU932', 'Limpeza Corretiva DPF 932'),
-    ('TU987', 'Agente do Sistema SCR ARLA32')
+    ('CARE0 40001', 'Espuma Limpeza', 'OURO', '🥇'),
+    ('CARE0 40102', 'Lubrificante Teflon', 'PRATA', '🥈'),
+    ('CARE0 40201', 'Desengraxante Universal', 'BRONZE', '🥉'),
+    ('CARE0 40501', 'Limpeza Preventiva DPF', 'PRATA', '🥈'),
+    ('CARE0 40701', 'Evaporador', 'OURO', '🥇'),
+    ('CARE0 40702', 'Sanitizador AC', 'OURO', '🥇'),
+    ('CARE0 40703', 'Odorizante', 'PRATA', '🥈'),
+    ('CARE0 42501', 'Tratamento FLEX', 'BRONZE', '🥉'),
+    ('CARE0 42502', 'Tratamento DIESEL', 'BRONZE', '🥉'),
+    ('CARE0 43501', 'Limp. Interna Motor', 'BRONZE', '🥉'),
+    ('CARE0 44902', 'Lubrificação Feixe de Molas', 'PRATA', '🥈'),
+    ('CARE0 44904', 'Kit Lubrificação', 'BRONZE', '🥉'),
+    ('CARE0 44905', 'Veda Pneu', 'PRATA', '🥈'),
+    ('CARE044907', 'Limpa Para-brisa', 'BRONZE', '🥉'),
+    ('TU127', 'Limpeza Injetores DIESEL', 'OURO', '🥇'),
+    ('TU137', 'Limpeza Injetores FLEX', 'OURO', '🥇'),
+    ('TU931', 'Limpeza Corretiva DPF 931', 'OURO', '🥇'),
+    ('TU932', 'Limpeza Corretiva DPF 932', 'OURO', '🥇'),
+    ('TU987', 'Agente do Sistema SCR ARLA32', 'OURO', '🥇')
 ]
 
 METAS_STAFF = {
@@ -434,7 +396,7 @@ file_pass = st.sidebar.file_uploader("Relatório de Passagens (OS)", type=["xlsx
 file_vend = st.sidebar.file_uploader("Relatório de Vendas (NF)", type=["xlsx", "xls"])
 
 if file_pass and file_vend:
-    if st.sidebar.button("🔄 Atualizar dados", use_container_width=True):
+    if st.sidebar.button("🔄 Atualizar dados", use_container_width=True, type="primary"):
         with st.spinner("Processando e atualizando na nuvem..."):
             save_to_database(file_pass, file_vend)
             st.sidebar.success("🟢 Dados atualizados no Supabase!")
@@ -463,7 +425,7 @@ else:
     st.sidebar.warning("Tem certeza? Todos os dados na nuvem serão apagados!")
     col_bt1, col_bt2 = st.sidebar.columns(2)
     with col_bt1:
-        if st.button("Sim, apagar", use_container_width=True):
+        if st.button("Sim, apagar", use_container_width=True, type="primary"):
             clear_database()
             st.session_state.confirm_clear = False
             st.sidebar.success("Banco limpo!")
@@ -496,14 +458,13 @@ else:
     with tab1:
         st.subheader("Vendas por Consultor")
         
-        # Filtro: Exibe apenas consultores que possuem pelo menos 1 passagem (OS CSP) no período
         all_consultants = sorted(list(p_filtered['consultor'].dropna().unique())) if not p_filtered.empty else []
         filtered_consultants = []
         consultant_display_map = {}
 
         for c in all_consultants:
             tot_p = int(p_filtered[p_filtered['consultor'] == c]['os_numero'].nunique())
-            if tot_p > 0: # Exige pelo menos 1 passagem
+            if tot_p > 0:
                 short_name = format_short_name(c)
                 filtered_consultants.append(c)
                 consultant_display_map[c] = short_name
@@ -525,11 +486,11 @@ else:
                         conv_c = round(tot_latas_c / tot_os_c, 2) if tot_os_c > 0 else 0.0
                         
                         prod_nao_vendidos = []
-                        for prod_ref, desc in PRODUCT_CATALOG:
+                        for prod_ref, desc, grupo, icone in PRODUCT_CATALOG:
                             sku_alvo = PRODUCT_MAP.get(prod_ref, {}).get('sku')
                             qtd_item = c_vendas[(c_vendas['prod_ref'] == prod_ref) | (c_vendas['sku'] == sku_alvo)]['qtde'].sum()
                             if qtd_item == 0:
-                                prod_nao_vendidos.append(f"{desc} (SKU {sku_alvo})")
+                                prod_nao_vendidos.append(f"{icone} {desc} (SKU {sku_alvo})")
                         
                         abrir_modal_consultor(short_n, mes_sel, loja_display_sel, tot_latas_c, tot_os_c, conv_c, prod_nao_vendidos)
 
@@ -539,8 +500,8 @@ else:
             totais_colunas = {c: 0 for c in filtered_consultants}
             mix_colunas = {c: set() for c in filtered_consultants}
 
-            for prod_cod, desc in PRODUCT_CATALOG:
-                row_dict = {'Código SKU': prod_cod, 'Descrição do Produto': desc}
+            for prod_cod, desc, grupo, icone in PRODUCT_CATALOG:
+                row_dict = {'Grupo': f"{icone} {grupo}", 'Código SKU': prod_cod, 'Descrição do Produto': desc}
                 sku_alvo = PRODUCT_MAP.get(prod_cod, {}).get('sku')
                 for c in filtered_consultants:
                     short_n = consultant_display_map[c]
@@ -552,12 +513,12 @@ else:
                         mix_colunas[c].add(sku_alvo if sku_alvo else prod_cod)
                 matrix_data.append(row_dict)
 
-            tot_row = {'Código SKU': 'TOTAL DE LATAS', 'Descrição do Produto': 'Soma Volume'}
-            mix_row = {'Código SKU': 'CONTAGEM MIX', 'Descrição do Produto': 'SKUs Distintos'}
-            pass_row = {'Código SKU': 'PASSAGENS CSP', 'Descrição do Produto': 'OS CSP'}
-            conv_row = {'Código SKU': 'TAXA CONVERSÃO', 'Descrição do Produto': 'Latas / OS'}
-            status_mix = {'Código SKU': 'STATUS MIX', 'Descrição do Produto': 'Meta 17 SKUs'}
-            status_conv = {'Código SKU': 'STATUS CONV.', 'Descrição do Produto': 'Meta 2.40'}
+            tot_row = {'Grupo': '', 'Código SKU': 'TOTAL DE LATAS', 'Descrição do Produto': 'Soma Volume'}
+            mix_row = {'Grupo': '', 'Código SKU': 'CONTAGEM MIX', 'Descrição do Produto': 'SKUs Distintos'}
+            pass_row = {'Grupo': '', 'Código SKU': 'PASSAGENS CSP', 'Descrição do Produto': 'OS CSP'}
+            conv_row = {'Grupo': '', 'Código SKU': 'TAXA CONVERSÃO', 'Descrição do Produto': 'Latas / OS'}
+            status_mix = {'Grupo': '', 'Código SKU': 'STATUS MIX', 'Descrição do Produto': 'Meta 17 SKUs'}
+            status_conv = {'Grupo': '', 'Código SKU': 'STATUS CONV.', 'Descrição do Produto': 'Meta 2.40'}
 
             passagens_dict = {c: int(p_filtered[p_filtered['consultor'] == c]['os_numero'].nunique()) for c in filtered_consultants}
 
@@ -601,7 +562,13 @@ else:
             status = "🟢 Atingida" if realizado >= meta else f"🔴 Falta {abs(gap)}"
             if realizado < meta:
                 todos_skus = False
+            
+            # Busca ícone e grupo do SKU
+            prod_info = next((item for item in PRODUCT_CATALOG if item[0] == sku or PRODUCT_MAP.get(item[0], {}).get('sku') == sku), None)
+            grupo_txt = f"{prod_info[3]} {prod_info[2]}" if prod_info else "-"
+
             staff_rows.append({
+                'Grupo': grupo_txt,
                 'SKU': str(sku), 
                 'Descrição do Produto': str(desc), 
                 'Meta': str(meta), 
@@ -617,6 +584,7 @@ else:
         status_conv = "🟢 Meta Atingida" if taxa_conv >= meta_conv else f"🔴 Falta {abs(gap_conv):.2f}"
         
         staff_rows.append({
+            'Grupo': '-',
             'SKU': '-', 
             'Descrição do Produto': 'Taxa de Conversão Loja', 
             'Meta': f"{meta_conv:.2f}", 
@@ -722,77 +690,12 @@ else:
 
             with col_a2:
                 st.markdown("#### 🎯 Taxa de Conversão por Concessionária")
-                v_grp = df_v_glob.groupby(['Mes', 'Concessionaria'])['qtde'].sum().reset_index()
-                p_grp = df_p_glob.groupby(['Mes', 'Concessionaria'])['os_numero'].nunique().reset_index()
+                v_grp = df_v_glob.groupby(['Mes', 'Concessionaria', 'mes_num'])['qtde'].sum().reset_index()
+                p_grp = df_p_glob.groupby(['Mes', 'Concessionaria', 'mes_num'])['os_numero'].nunique().reset_index()
                 
-                df_conv_glob = pd.merge(v_grp, p_grp, on=['Mes', 'Concessionaria'], how='inner')
-                df_conv_glob['Conversao'] = (df_conv_glob['qtde'] / df_conv_glob['os_numero']).round(2)
-                
-                conv_pivot = df_conv_glob.pivot(index='Mes', columns='Concessionaria', values='Conversao').fillna(0)
+                df_conv_g = pd.merge(v_grp, p_grp, on=['Mes', 'Concessionaria', 'mes_num'], how='outer').fillna(0)
+                df_conv_g['Conversao'] = df_conv_g.apply(
+                    lambda r: round(r['qtde'] / r['os_numero'], 2) if r['os_numero'] > 0 else 0.0, axis=1
+                )
+                conv_pivot = df_conv_g.pivot(index='Mes', columns='Concessionaria', values='Conversao').fillna(0)
                 st.line_chart(conv_pivot, use_container_width=True)
-
-            st.markdown("---")
-            st.subheader("📊 Tabela Geral por Produto e Concessionária")
-
-            col_filtro, col_vazia = st.columns([1, 2])
-            with col_filtro:
-                opcoes_meses = ["Todos os Meses"] + [m for m in ["Setembro", "Outubro", "Novembro", "Dezembro"] if m in df_v_glob['Mes'].unique()]
-                mes_analytics_sel = st.selectbox("Filtrar Período do Relatório:", opcoes_meses, index=0)
-
-            if mes_analytics_sel == "Todos os Meses":
-                df_v_mes_sel = df_v_glob.copy()
-                df_p_mes_sel = df_p_glob.copy()
-            else:
-                df_v_mes_sel = df_v_glob[df_v_glob['Mes'] == mes_analytics_sel]
-                df_p_mes_sel = df_p_glob[df_p_glob['Mes'] == mes_analytics_sel]
-
-            if df_v_mes_sel.empty:
-                st.info("Nenhum registro encontrado para a seleção.")
-            else:
-                analytics_table_rows = []
-                
-                for prod_cod, desc in PRODUCT_CATALOG:
-                    sku_alvo = PRODUCT_MAP.get(prod_cod, {}).get('sku')
-                    row_dict = {'Código': prod_cod, 'Descrição': desc}
-                    
-                    soma_linha = 0
-                    for loja in LOJAS_PADRAO_ORDEM:
-                        qtd = df_v_mes_sel[(df_v_mes_sel['Concessionaria'].str.upper() == loja.upper()) & ((df_v_mes_sel['prod_ref'] == prod_cod) | (df_v_mes_sel['sku'] == sku_alvo))]['qtde'].sum()
-                        qtd = int(qtd) if not np.isnan(qtd) else 0
-                        row_dict[loja] = str(qtd) if qtd > 0 else ""
-                        soma_linha += qtd
-                    
-                    row_dict['Total'] = str(soma_linha)
-                    analytics_table_rows.append(row_dict)
-
-                tot_vol_row = {'Código': 'SOMA VOLUME', 'Descrição': 'Total de Latas'}
-                pass_row = {'Código': 'PASSAGENS CSP', 'Descrição': 'Atendimentos OS'}
-                conv_row = {'Código': 'TAXA CONVERSÃO', 'Descrição': 'Latas / OS'}
-
-                soma_geral_vol = 0
-                soma_geral_pass = 0
-
-                for loja in LOJAS_PADRAO_ORDEM:
-                    tot_v_loja = int(df_v_mes_sel[df_v_mes_sel['Concessionaria'].str.upper() == loja.upper()]['qtde'].sum())
-                    tot_p_loja = int(df_p_mes_sel[df_p_mes_sel['Concessionaria'].str.upper() == loja.upper()]['os_numero'].nunique())
-                    conv_loja = round(tot_v_loja / tot_p_loja, 2) if tot_p_loja > 0 else 0.0
-
-                    soma_geral_vol += tot_v_loja
-                    soma_geral_pass += tot_p_loja
-
-                    tot_vol_row[loja] = str(tot_v_loja)
-                    pass_row[loja] = str(tot_p_loja)
-                    conv_row[loja] = f"{conv_loja:.2f}"
-
-                conv_geral_rede = round(soma_geral_vol / soma_geral_pass, 2) if soma_geral_pass > 0 else 0.0
-
-                tot_vol_row['Total'] = str(soma_geral_vol)
-                pass_row['Total'] = str(soma_geral_pass)
-                conv_row['Total'] = f"{conv_geral_rede:.2f}"
-
-                analytics_table_rows.extend([tot_vol_row, pass_row, conv_row])
-                df_analytics_final = pd.DataFrame(analytics_table_rows)
-
-                st.markdown('<div class="table-responsive">', unsafe_allow_html=True)
-                st.markdown(df_analytics_final.to_html(index=False, classes="custom-table"), unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
