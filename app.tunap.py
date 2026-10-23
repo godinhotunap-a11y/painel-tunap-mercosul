@@ -689,9 +689,14 @@ else:
 
             col_a1, col_a2 = st.columns(2)
 
+            # Ordem cronológica dos meses (Setembro -> Dezembro)
+            meses_ordem_cronologica = ["Setembro", "Outubro", "Novembro", "Dezembro"]
+
             with col_a1:
                 st.markdown("#### 📦 Volume de Latas por Concessionária")
                 v_pivot = df_v_glob.groupby(['Mes', 'Concessionaria'])['qtde'].sum().unstack().fillna(0)
+                meses_v_existentes = [m for m in meses_ordem_cronologica if m in v_pivot.index]
+                v_pivot = v_pivot.reindex(meses_v_existentes)
                 st.line_chart(v_pivot, use_container_width=True)
 
             with col_a2:
@@ -704,4 +709,80 @@ else:
                     lambda r: round(r['qtde'] / r['os_numero'], 2) if r['os_numero'] > 0 else 0.0, axis=1
                 )
                 conv_pivot = df_conv_g.pivot(index='Mes', columns='Concessionaria', values='Conversao').fillna(0)
+                meses_conv_existentes = [m for m in meses_ordem_cronologica if m in conv_pivot.index]
+                conv_pivot = conv_pivot.reindex(meses_conv_existentes)
                 st.line_chart(conv_pivot, use_container_width=True)
+
+            st.markdown("---")
+            st.subheader("🏆 Ranking Geral de Consultores (Período Selecionado)")
+            st.write("Visão consolidada do desempenho individual de todos os consultores da rede na campanha. Clique nos cabeçalhos das colunas para ordenar:")
+
+            # Filtra vendas e passagens do mês ativo na barra lateral para o ranking global
+            v_m_glob = df_v_glob[df_v_glob['mes_num'] == num_mes]
+            p_m_glob = df_p_glob[df_p_glob['mes_num'] == num_mes]
+
+            # Mapeia cada SKU/Ref aos grupos de produto
+            ref_to_grupo = {}
+            for ref, info in PRODUCT_MAP.items():
+                ref_to_grupo[ref] = info['grupo']
+                if info.get('sku'):
+                    ref_to_grupo[info['sku']] = info['grupo']
+
+            v_m_glob_grupo = v_m_glob.copy()
+            v_m_glob_grupo['Grupo'] = v_m_glob_grupo['sku'].map(ref_to_grupo).fillna(
+                v_m_glob_grupo['prod_ref'].map(ref_to_grupo)
+            ).fillna('Outros')
+
+            # Lista todos os consultores válidos (pelo menos 1 passagem CSP no período)
+            consultores_globais = sorted(list(p_m_glob['consultor'].dropna().unique()))
+
+            ranking_data = []
+            for c in consultores_globais:
+                p_c = p_m_glob[p_m_glob['consultor'] == c]
+                tot_os_c = int(p_c['os_numero'].nunique())
+                
+                if tot_os_c > 0:
+                    v_c = v_m_glob_grupo[v_m_glob_grupo['consultor'] == c]
+                    loja_c = format_loja_name(p_c['empresa'].iloc[0]) if not p_c.empty else "N/A"
+                    nome_curto = format_short_name(c)
+                    
+                    tot_latas_c = int(v_c['qtde'].sum())
+                    conv_c = round(tot_latas_c / tot_os_c, 2)
+                    
+                    diamante_qtd = int(v_c[v_c['Grupo'] == 'DIAMANTE']['qtde'].sum())
+                    ouro_qtd = int(v_c[v_c['Grupo'] == 'OURO']['qtde'].sum())
+                    prata_qtd = int(v_c[v_c['Grupo'] == 'PRATA']['qtde'].sum())
+                    bronze_qtd = int(v_c[v_c['Grupo'] == 'BRONZE']['qtde'].sum())
+
+                    ranking_data.append({
+                        'Consultor': nome_curto,
+                        'Concessionária': loja_c,
+                        'Taxa Conversão': conv_c,
+                        'Total Latas': tot_latas_c,
+                        'Passagens CSP': tot_os_c,
+                        '💎 DIAMANTE': diamante_qtd,
+                        '🥇 OURO': ouro_qtd,
+                        '🥈 PRATA': prata_qtd,
+                        '🥉 BRONZE': bronze_qtd
+                    })
+
+            if ranking_data:
+                df_ranking = pd.DataFrame(ranking_data)
+                df_ranking = df_ranking.sort_values(by='Taxa Conversão', ascending=False).reset_index(drop=True)
+                
+                st.dataframe(
+                    df_ranking,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Taxa Conversão": st.column_config.NumberColumn("Taxa Conversão", format="%.2f"),
+                        "Total Latas": st.column_config.NumberColumn("Total Latas", format="%d"),
+                        "Passagens CSP": st.column_config.NumberColumn("Passagens CSP", format="%d"),
+                        "💎 DIAMANTE": st.column_config.NumberColumn("💎 DIAMANTE", format="%d"),
+                        "🥇 OURO": st.column_config.NumberColumn("🥇 OURO", format="%d"),
+                        "🥈 PRATA": st.column_config.NumberColumn("🥈 PRATA", format="%d"),
+                        "🥉 BRONZE": st.column_config.NumberColumn("🥉 BRONZE", format="%d")
+                    }
+                )
+            else:
+                st.info("Nenhum consultor com dados no período selecionado.")
